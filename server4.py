@@ -43,8 +43,8 @@ for i in range(NUM_ENEMIES):
     enemy_id = next_enemy_id
     next_enemy_id += 1
     enemies[enemy_id] = {
-        'x': random.uniform(-500, 500),
-        'y': random.uniform(-500, 500),
+        'x': random.uniform(-100, 100),
+        'y': random.uniform(-100, 100),
         'target_player': None
     }
 print(f"{NUM_ENEMIES} ennemis créés au démarrage du serveur !")
@@ -55,7 +55,9 @@ try:
             data, addr = sock.recvfrom(1024)
             if not data:
                 continue
- 
+            # petit explication en gros on prend des octet pour representer de float et quand on unpack on 
+            # obtien les valeur en float attention a bien prendre les bonne taille d'octet
+            #print(struct.unpack("ffff", data[1:17])) 
             msg_type = data[0]
 
             # --- Nouveau joueur ---

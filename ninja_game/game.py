@@ -12,6 +12,7 @@ from scripts.clouds import Clouds
 from scripts.particle import Particle
 from scripts.spark import Spark
 
+from scripts.shader_bg import ShaderBackground
 from client_network import ClientNetwork
 
 class Game:
@@ -77,6 +78,7 @@ class Game:
         self.net.connect()
         self.remote_players = {}
         
+        self.shader_bg = ShaderBackground(320, 240, "data/shaders/3.4.frag")
         
     def load_level(self, map_id):
         self.tilemap.load('data/maps/' + str(map_id) + '.json')
@@ -115,8 +117,11 @@ class Game:
             self.remote_players = self.net.players
 
             self.display.fill((0, 0, 0, 0))
-            self.display_2.blit(self.assets['background'], (0, 0))
-            
+            #self.display_2.blit(self.assets['background'], (0, 0))
+            shader_surface = self.shader_bg.render()
+            self.display_2.blit(shader_surface, (0, 0))
+
+
             self.screenshake = max(0, self.screenshake - 1)
             
             # Les ennemis sont maintenant gérés par le serveur
