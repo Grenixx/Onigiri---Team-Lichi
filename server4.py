@@ -30,12 +30,24 @@ print(f"Server running on {SERVER_IP}:{SERVER_PORT}")
 
 clients = {}   # addr -> id
 players = {}   # id -> (x, y, vx, vy)
-enemies = {}    # enemy_id -> {'x': float, 'y': float, 'target_player': int or None}
+enemies = {}   # enemy_id -> {'x': float, 'y': float, 'target_player': int or None}
 next_id = 1
 next_enemy_id = 1
 last_update = time.time()
-ENEMY_SPEED = 0.5  # Vitesse des ennemis
-ENEMIES_PER_PLAYER = 2  # Nombre d'ennemis par joueur
+
+ENEMY_SPEED = 0.5
+NUM_ENEMIES = 20   # nombre d’ennemis globaux
+
+# --- ✅ Créer les ennemis dès le début ---
+for i in range(NUM_ENEMIES):
+    enemy_id = next_enemy_id
+    next_enemy_id += 1
+    enemies[enemy_id] = {
+        'x': random.uniform(-500, 500),
+        'y': random.uniform(-500, 500),
+        'target_player': None
+    }
+print(f"{NUM_ENEMIES} ennemis créés au démarrage du serveur !")
 
 try:
     while True:
@@ -52,26 +64,9 @@ try:
                 players[next_id] = (0, 0, 0, 0)
                 print(f"New player {next_id} connected {addr}")
                 
-                # Créer des ennemis près du nouveau joueur
-                px, py = players[next_id][0], players[next_id][1]
-                for i in range(ENEMIES_PER_PLAYER):
-                    enemy_id = next_enemy_id
-                    # Position aléatoire près du joueur (dans un rayon de 100-200 pixels)
-                    angle = random.random() * 2 * 3.14159
-                    distance = 100 + random.random() * 100
-                    enemy_x = px + distance * (random.random() - 0.5)
-                    enemy_y = py + distance * (random.random() - 0.5)
-                    enemies[enemy_id] = {
-                        'x': enemy_x,
-                        'y': enemy_y,
-                        'target_player': next_id
-                    }
-                    next_enemy_id += 1
-                    print(f"Created enemy {enemy_id} at ({enemy_x:.1f}, {enemy_y:.1f}) for player {next_id}")
-                
-                # Envoyer seulement l'ID (plus besoin de is_host)
                 sock.sendto(struct.pack("I", next_id), addr)
                 next_id += 1
+                continue
 
             # --- Déconnexion ---
             elif msg_type == 1:
@@ -80,28 +75,10 @@ try:
                     print(f"Player {pid} disconnected {addr}")
                     del players[pid]
                     del clients[addr]
-                    # Réassigner les ennemis ciblant ce joueur ou les supprimer
-                    enemies_to_remove = []
-                    for eid, enemy in enemies.items():
-                        if enemy.get('target_player') == pid:
-                            # Réassigner à un autre joueur ou supprimer
-                            if players:
-                                # Trouver le joueur le plus proche
-                                ex, ey = enemy['x'], enemy['y']
-                                closest_player = None
-                                closest_dist = float('inf')
-                                for other_pid, (px, py, _, _) in players.items():
-                                    dist = ((px - ex)**2 + (py - ey)**2)**0.5
-                                    if dist < closest_dist:
-                                        closest_dist = dist
-                                        closest_player = other_pid
-                                enemy['target_player'] = closest_player
-                            else:
-                                # Plus de joueurs, marquer pour suppression
-                                enemies_to_remove.append(eid)
-                    # Supprimer les ennemis marqués
-                    for eid in enemies_to_remove:
-                        del enemies[eid]
+                    # Supprimer la cible des ennemis de ce joueur
+                    for enemy in enemies.values():
+                        if enemy['target_player'] == pid:
+                            enemy['target_player'] = None
                 continue
 
             # --- Update position joueur ---
@@ -116,53 +93,48 @@ try:
             if now - last_update >= UPDATE_RATE:
                 last_update = now
                 
-                # --- Calculer le déplacement des ennemis vers le joueur le plus proche ---
+                # --- Déplacement des ennemis ---
                 for eid, enemy in enemies.items():
-                    target_player = enemy.get('target_player')
-                    if target_player and target_player in players:
-                        px, py, _, _ = players[target_player]
+                    # Trouver une cible si besoin
+                    #if enemy['target_player'] not in players and players:
+                    ex, ey = enemy['x'], enemy['y']
+                    closest_player = None
+                    closest_dist = float('inf')
+                    for pid, (px, py, _, _) in players.items():
+                        dist = ((px - ex)**2 + (py - ey)**2)**0.5
+                        if dist < closest_dist:
+                            closest_dist = dist
+                            closest_player = pid
+                    enemy['target_player'] = closest_player
+
+                    # Se déplacer vers la cible
+                    target = enemy['target_player']
+                    if target and target in players:
+                        px, py, _, _ = players[target]
                         ex, ey = enemy['x'], enemy['y']
-                        
-                        # Calculer la direction vers le joueur
                         dx = px - ex
                         dy = py - ey
                         dist = (dx**2 + dy**2)**0.5
-                        
-                        if dist > 5:  # Se déplacer si on n'est pas déjà très proche
-                            # Normaliser et multiplier par la vitesse
-                            dx_norm = (dx / dist) * ENEMY_SPEED if dist > 0 else 0
-                            dy_norm = (dy / dist) * ENEMY_SPEED if dist > 0 else 0
-                            
-                            enemy['x'] += dx_norm
-                            enemy['y'] += dy_norm
-                        # Si le joueur cible n'existe plus, trouver un nouveau cible
-                    elif target_player is None or target_player not in players:
-                        # Trouver le joueur le plus proche
-                        if players:
-                            ex, ey = enemy['x'], enemy['y']
-                            closest_player = None
-                            closest_dist = float('inf')
-                            for pid, (px, py, _, _) in players.items():
-                                dist = ((px - ex)**2 + (py - ey)**2)**0.5
-                                if dist < closest_dist:
-                                    closest_dist = dist
-                                    closest_player = pid
-                            enemy['target_player'] = closest_player
-                
-                # Payload: [nb_players: B] [players...] [nb_enemies: B] [enemies...]
+                        if dist > 5:
+                            enemy['x'] += (dx / dist) * ENEMY_SPEED
+                            enemy['y'] += (dy / dist) * ENEMY_SPEED
+
+                # --- Construire et envoyer les données ---
                 payload = struct.pack("B", len(players))
                 for pid, (px, py, pvx, pvy) in players.items():
                     payload += struct.pack("Iffff", pid, px, py, pvx, pvy)
-                # Ajouter les ennemis (format simplifié: juste x, y)
+                
                 payload += struct.pack("B", len(enemies))
                 for eid, enemy in enemies.items():
                     payload += struct.pack("Iff", eid, enemy['x'], enemy['y'])
+                
                 for c in clients:
                     sock.sendto(payload, c)
 
         except Exception as e:
             # print("Error:", e)
             pass
+
 except KeyboardInterrupt:
     print("Fermeture du serveur...")
     try:
