@@ -6,7 +6,7 @@ import random
 import pygame
 
 from scripts.utils import load_image, load_images, Animation
-from scripts.entities import PhysicsEntity, Player, Enemy
+from scripts.entities import PhysicsEntity, Player, PurpleCircle, RemotePlayerRenderer
 from scripts.tilemap import Tilemap
 from scripts.clouds import Clouds
 from scripts.particle import Particle
@@ -66,6 +66,9 @@ class Game:
         self.clouds = Clouds(self.assets['clouds'], count=5)
         
         self.player = Player(self, (50, 50), (8, 15))
+
+        self.enemies_renderer = PurpleCircle(self)
+        self.remote_players_renderer = RemotePlayerRenderer(self)
         
         self.tilemap = Tilemap(self, tile_size=16)
         
@@ -155,12 +158,9 @@ class Game:
             self.tilemap.render(self.display, offset=render_scroll)
             
             # --- Afficher les ennemis depuis le serveur (cercles violets) ---
-            for eid, (x, y) in self.net.enemies.items():
-                # Calculer la position à l'écran
-                screen_x = x - render_scroll[0]
-                screen_y = y - render_scroll[1]
-                # Dessiner un cercle violet (rayon 8)
-                pygame.draw.circle(self.display, (128, 0, 128), (int(screen_x), int(screen_y)), 8)
+            # --- Rendu des ennemis ---
+            self.enemies_renderer.render(self.display, offset=render_scroll)
+
             
             if not self.dead:
                 self.player.update(self.tilemap, (self.movement[1] - self.movement[0], 0))
@@ -237,16 +237,8 @@ class Game:
                 self.display.blit(transition_surf, (0, 0))
             
             # --- afficher les autres joueurs ---
-            
-            for pid, (x, y, vx, vy) in self.remote_players.items():
-                if pid != self.net.id:  # ne pas afficher soi-même
-                    rect = pygame.Rect(
-                        x - render_scroll[0],
-                        y - render_scroll[1],
-                        8, 15
-                    )
-                    pygame.draw.rect(self.display, (0, 255, 0), rect)
-            # -----------------------------------
+            self.remote_players_renderer.render(self.display, offset=render_scroll)
+
 
             self.display_2.blit(self.display, (0, 0))
             

@@ -42,6 +42,7 @@ class ClientNetwork:
                 for _ in range(count):
                     if len(data) >= offset + 20:
                         pid, x, y, vx, vy = struct.unpack("Iffff", data[offset:offset + 20])
+                        print(f"Player {pid}: pos=({x},{y}) vel=({vx},{vy})")
                         new_players[pid] = (x, y, vx, vy)
                         offset += 20
                     else:
