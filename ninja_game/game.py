@@ -63,7 +63,7 @@ class Game:
         self.sfx['dash'].set_volume(0.01)
         self.sfx['jump'].set_volume(0.01)
         
-        self.clouds = Clouds(self.assets['clouds'], count=16)
+        self.clouds = Clouds(self.assets['clouds'], count=5)
         
         self.player = Player(self, (50, 50), (8, 15))
         
@@ -78,7 +78,7 @@ class Game:
         self.net.connect()
         self.remote_players = {}
         
-        self.shader_bg = ShaderBackground(320, 240, "data/shaders/3.4.frag")
+        self.shader_bg = ShaderBackground(320, 240, "data/shaders/3.5.frag")
         
     def load_level(self, map_id):
         self.tilemap.load('data/maps/' + str(map_id) + '.json')

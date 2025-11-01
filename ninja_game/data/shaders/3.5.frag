@@ -2,6 +2,7 @@ precision mediump float;
 
 uniform float u_time;
 uniform vec2 u_resolution;
+uniform vec2 u_camera;
 
 vec2 randomGradient(vec2 p) {
   p += 0.02;
@@ -21,8 +22,8 @@ vec2 quintic(vec2 p) {
 }
 
 void main() {
-  vec2 uv = gl_FragCoord.xy / u_resolution ;
-  uv = gl_FragCoord.xy / u_resolution.y;
+  vec2 uv = (gl_FragCoord.xy + u_camera) / u_resolution.y;
+
   
   vec3 color = vec3(0.0);
   uv *= 15.0;
@@ -58,23 +59,25 @@ void main() {
   // Remap perlin from [-1.0, 1.0] to [0.0, 1.0]
   float remappedPerlin = perlin;
 
+  vec3 bgColor = vec3(1.0, 1.0, 0.73);
+  vec3 Ringcolor = vec3(1.0, 0.49, 0.49);
   // Define colors based on remappedPerlin ranges
   if (remappedPerlin < 0.) {
-    color = vec3(0.0, 0.73, 1.0);  // Dark Blue
+    color = bgColor;  // Black
   } else if (remappedPerlin < 0.1) {
-    color = vec3(0.0784, 0.0784, 0.0863);  // White
+    color = Ringcolor;
   } else if (remappedPerlin < 0.2) {
-    color = vec3(0.0);  // Cyan
+    color = bgColor;
   } else if (remappedPerlin < 0.3) {
-    color = vec3(0.0, 0.0, 0.0);  // White
+    color = Ringcolor;  // White
   } else if (remappedPerlin < 0.4){
-    color = vec3(0.0);  // White
+    color = bgColor;  // White
   }else if (remappedPerlin < 0.6){
-    color = vec3(0.0784, 0.0784, 0.0863);  // White
+    color = Ringcolor;  // White
   }else if (remappedPerlin < 0.8){
-    color = vec3(0.0, 0.0, 0.0);  // White
+    color = bgColor;  // White
   } else {
-        color = vec3(0.0, 0.0, 0.0);  // White
+    color = Ringcolor;  // White
   }
 
   gl_FragColor = vec4(color, 1.0);
