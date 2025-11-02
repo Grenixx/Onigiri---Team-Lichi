@@ -192,24 +192,47 @@ class PurpleCircle:
             screen_y = y - offset[1]
             pygame.draw.circle(surf, (128, 0, 128), (int(screen_x), int(screen_y)), 8)
 
-            
 class RemotePlayerRenderer:
-    """Affiche les autres joueurs avec leur sprite et animation."""
+    """Affiche et anime les autres joueurs avec leur sprite."""
+
+    class RemotePlayer:
+        def __init__(self, game, pid, pos=(0,0), action='idle', flip=False):
+            self.game = game
+            self.pid = pid
+            self.pos = list(pos)
+            self.flip = flip
+            self.set_action(action)
+
+        def set_action(self, action):
+            if hasattr(self, 'action') and self.action == action:
+                return
+            self.action = action
+            base_anim = self.game.assets.get(f'player/{action}', self.game.assets['player/idle'])
+            self.animation = base_anim.copy()
+
+        def update(self, pos, action, flip):
+            self.pos = list(pos)
+            self.flip = flip
+            self.set_action(action)
+            self.animation.update()
+
+        def render(self, surf, offset=(0,0)):
+            img = pygame.transform.flip(self.animation.img(), self.flip, False)
+            surf.blit(img, (self.pos[0] - offset[0] - 3, self.pos[1] - offset[1] - 3))
 
     def __init__(self, game):
         self.game = game
-        self.player_img = self.game.assets['player/idle'].img()
+        self.players = {}  # pid -> RemotePlayer
 
-    def render(self, surf, offset=(0, 0)):
+    def render(self, surf, offset=(0,0)):
         for pid, data in self.game.remote_players.items():
             if pid == self.game.net.id:
                 continue
-            
+
             x, y, action, flip = data
-            #print(f"Rendering remote player {pid} at ({x}, {y}) with action '{action}' and flip={flip}")
-            anim = self.game.assets.get(f'player/{action}', self.game.assets['player/idle'])
-            img = pygame.transform.flip(anim.img(), flip, False)
-            surf.blit(img, (x - offset[0] - 3, y - offset[1] - 3))
 
+            if pid not in self.players:
+                self.players[pid] = self.RemotePlayer(self.game, pid, (x,y), action, flip)
 
-
+            self.players[pid].update((x,y), action, flip)
+            self.players[pid].render(surf, offset)
