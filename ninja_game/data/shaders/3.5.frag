@@ -59,8 +59,8 @@ void main() {
   // Remap perlin from [-1.0, 1.0] to [0.0, 1.0]
   float remappedPerlin = perlin;
 
-  vec3 bgColor = vec3(1.0, 1.0, 0.73);
-  vec3 Ringcolor = vec3(1.0, 0.49, 0.49);
+  vec3 bgColor = vec3(0.302, 0.8706, 1.0);
+  vec3 Ringcolor = vec3(0.3137, 0.898, 1.0);
   // Define colors based on remappedPerlin ranges
   if (remappedPerlin < 0.) {
     color = bgColor;  // Black
