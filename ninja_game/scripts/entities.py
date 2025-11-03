@@ -157,9 +157,13 @@ class Enemy(PhysicsEntity):
         else:
             self.set_action('idle')
             
-        # Vérifie si l'ennemi est touché par le dash du joueur
-        if abs(self.game.player.dashing) >= 50 or self.game.player.action.startswith('attack'):
-            if self.rect().colliderect(self.game.player.rect()):
+        # --- Vérification des collisions avec le joueur ---
+        # Condition 1: Le joueur est-il en train de dasher ?
+        is_hit_by_dash = abs(self.game.player.dashing) >= 50
+        # Condition 2: L'arme du joueur est-elle active ET touche-t-elle l'ennemi ?
+        is_hit_by_weapon = self.game.player.weapon.attack_timer > 0 and self.rect().colliderect(self.game.player.weapon.rect())
+        if is_hit_by_dash or is_hit_by_weapon:
+            if self.rect().colliderect(self.game.player.rect()) or is_hit_by_weapon:
                 self.game.screenshake = max(16, self.game.screenshake)
                 self.game.sfx['hit'].play()
                 for i in range(30):
@@ -170,6 +174,7 @@ class Enemy(PhysicsEntity):
                 self.game.sparks.append(Spark(self.rect().center, 0, 5 + random.random()))
                 self.game.sparks.append(Spark(self.rect().center, math.pi, 5 + random.random()))
                 return True
+
             
     def render(self, surf, offset=(0, 0)):
         # Dessine l'ennemi
@@ -188,18 +193,26 @@ class Player(PhysicsEntity):
         # 'air_time' : compteur de frames passées en l'air
         self.air_time = 0
         # 'jumps' : nombre de sauts restants (pour le double saut)
-        self.jumps = 1
+        self.jumps = True
         self.wall_slide = False
         # 'dashing' : timer pour la durée et le cooldown du dash
         self.dashing = 0
         # 'is_pressed' : stocke la dernière touche de direction pressée (utile pour les attaques directionnelles)
         self.is_pressed = None
+        # Timer pour le "jump buffer". Si > 0, le joueur a demandé un saut récemment.
+        self.jump_buffer_timer = 0
+
+        # On crée une instance de l'arme et on la lie au joueur
+        self.weapon = Weapon(self)
     
     def update(self, tilemap, movement=(0, 0)):
         # Appelle la méthode update de la classe parente pour la physique de base
         super().update(tilemap, movement=movement)
         
         self.air_time += 1
+        # On met à jour l'arme à chaque frame
+        self.weapon.update()
+        self.jump_buffer_timer = max(0, self.jump_buffer_timer - 1)
         
         # Si le joueur tombe trop longtemps, il meurt
         if self.air_time > 120:
@@ -210,7 +223,13 @@ class Player(PhysicsEntity):
         # Si le joueur touche le sol, réinitialise son temps en l'air et ses sauts
         if self.collisions['down']:
             self.air_time = 0
-            self.jumps = 1
+            # On redonne 2 sauts au joueur quand il touche le sol.
+            self.jumps = True
+            # --- JUMP BUFFER CHECK ---
+            # Si le buffer de saut est actif au moment où on atterrit, on saute.
+            if self.jump_buffer_timer > 0:
+                self.jump()
+
             
         # Logique du "Wall Slide" (glissade sur les murs)
         self.wall_slide = False
@@ -263,8 +282,11 @@ class Player(PhysicsEntity):
     
     def render(self, surf, offset=(0, 0)):
         if abs(self.dashing) <= 50:
+            # On dessine le joueur
             super().render(surf, offset=offset)
-            
+            # Puis on dessine l'arme par-dessus pour qu'elle soit devant
+            self.weapon.render(surf, offset)
+
     def jump(self):
         # Si en train de glisser sur un mur (Wall Jump)
         if self.wall_slide:
@@ -272,22 +294,24 @@ class Player(PhysicsEntity):
             if self.flip and self.last_movement[0] < 0:
                 self.velocity[0] = 3.5
                 self.velocity[1] = -2.5
-                self.air_time = 5
-                self.jumps = max(0, self.jumps - 1)
+                self.air_time = 5 # Un peu de temps en l'air pour éviter un autre wall jump immédiat
+                self.jumps = False # On utilise le saut
                 return True
             elif not self.flip and self.last_movement[0] > 0:
                 self.velocity[0] = -3.5
                 self.velocity[1] = -2.5
                 self.air_time = 5
-                self.jumps = max(0, self.jumps - 1)
+                self.jumps = False
                 return True
                 
-        # Si le joueur a encore des sauts disponibles (saut normal ou double saut)
-        elif self.jumps:
+        # Saut normal ou "Coyote Time" : si on a un saut et qu'on est en l'air depuis peu de temps
+        elif self.jumps and self.air_time < 9: # 9 frames = ~0.15s
             self.velocity[1] = -3
-            self.jumps -= 1
+            self.jumps = False
             self.air_time = 5
+            self.jump_buffer_timer = 0 # On a sauté, on annule le buffer
             return True
+                
     
     def dash(self):
         # Ne peut dasher que si le cooldown est terminé
@@ -298,15 +322,70 @@ class Player(PhysicsEntity):
             else:
                 self.dashing = 60
 
-    def attack(self, is_pressed):
+    def request_jump(self):
+        # Si on ne peut pas sauter immédiatement (car en l'air), on active le buffer.
+        # 12 frames = 0.2s. C'est la fenêtre pendant laquelle le jeu se souviendra de l'appui.
+        if not self.jump():
+            self.jump_buffer_timer = 12
+            return False
+        return True
+
+    def attack(self, direction):
         print("Attack initiated")
         # On ne peut pas attaquer si on est déjà en train d'attaquer ou de dasher
-        if (not self.action.startswith('attack') or self.animation.done) and not self.dashing:
+        if (not self.action.startswith('attack') or self.animation.done) and not self.dashing and not self.wall_slide:
+            
+            attack_direction = 'front' # Direction par défaut
+
             # Priorité 1 : Attaque vers le haut si la touche 'haut' est pressée.
-            if is_pressed in ['up', 'down']:
-                self.set_action('attack_' + is_pressed)
+            if direction in ['up', 'down']:
+                attack_direction = direction
+
             # Par défaut (aucune touche directionnelle prioritaire), on fait une attaque frontale.
-            else:
-                self.set_action('attack_front')
-            print(f"Action set to {self.action}")
+            self.set_action('attack_' + attack_direction)
+            # On déclenche l'animation de l'arme
+            self.weapon.swing(attack_direction)
+
+            print(f"Action set to {self.action}, weapon swinging {attack_direction}")
             # On pourrait jouer un son ici : self.game.sfx['hit'].play()
+
+class Weapon:
+    def __init__(self, owner): #owner sera generalement le joueur
+        self.owner = owner
+        self.image = owner.game.assets['weapon']
+        self.angle = 0
+        self.attack_timer = 0
+    def update(self):
+        if self.attack_timer > 0:
+            self.attack_timer = max(0, self.attack_timer - 1)
+
+    def rect(self):
+        # Crée un rectangle de collision pour l'arme.
+        # C'est une simplification, car il ne tourne pas avec l'image.
+        # Mais c'est un excellent point de départ !
+        if self.owner.flip:
+            # Position de la hitbox quand le joueur regarde à gauche
+            return pygame.Rect(self.owner.rect().centerx - self.image.get_width(), self.owner.rect().centery - self.image.get_height() // 2, self.image.get_width(), self.image.get_height())
+        else:
+            # Position de la hitbox quand le joueur regarde à droite
+            return pygame.Rect(self.owner.rect().centerx, self.owner.rect().centery - self.image.get_height() // 2, self.image.get_width(), self.image.get_height())
+
+    def render(self, surf, offset=(0, 0)):
+        # On ne dessine l'arme que si elle est en train d'attaquer
+        if self.attack_timer > 0:
+            center_x = self.owner.rect().centerx - offset[0]
+            center_y = self.owner.rect().centery - offset[1]
+            rotated_image = pygame.transform.rotate(self.image, self.angle)
+            if self.owner.flip:
+                pos_x = center_x - rotated_image.get_width() + 10
+            else:
+                pos_x = center_x - 10
+            surf.blit(rotated_image, (pos_x, center_y - rotated_image.get_height() // 2))
+    def swing(self, direction):
+        self.attack_timer = 15
+        if direction == 'up':
+            self.angle = -90 if self.owner.flip else 90
+        elif direction == 'down':
+            self.angle = 90 if self.owner.flip else -90
+        else:
+            self.angle = 0

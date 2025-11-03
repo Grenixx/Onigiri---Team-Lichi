@@ -65,6 +65,7 @@ class Game:
             'particle/particle': Animation(load_images('particles/particle'), img_dur=6, loop=False),
             'gun': load_image('gun.png'),
             'projectile': load_image('projectile.png'),
+            'weapon': load_image('entities/weapon/weapon.xcf'), 
         }
         
         # Dictionnaire pour stocker tous les effets sonores (SFX)
@@ -289,7 +290,7 @@ class Game:
                         self.player.is_pressed = 'up'
                     # On vérifie d'abord la touche, PUIS on tente de sauter.
                     if event.key == pygame.K_SPACE:
-                        if self.player.jump():
+                        if self.player.request_jump():
                             self.sfx['jump'].play()
                     if event.key == pygame.K_DOWN or event.key == pygame.K_s:
                         # On stocke l'information que la touche bas est pressée
