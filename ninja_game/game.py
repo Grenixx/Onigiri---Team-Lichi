@@ -14,6 +14,7 @@ from scripts.spark import Spark
 
 from scripts.shader_bg import ShaderBackground
 from client_network import ClientNetwork
+from controller import Controller  
 
 class Game:
     def __init__(self):
@@ -82,6 +83,8 @@ class Game:
         self.remote_players = {}
         
         self.shader_bg = ShaderBackground(320, 240, "data/shaders/3.5.frag")
+
+        self.controller = Controller()
         
     def load_level(self, map_id):
         self.tilemap.load('data/maps/' + str(map_id) + '.json')
@@ -215,6 +218,7 @@ class Game:
                 if kill:
                     self.particles.remove(particle)
             
+            # (le reste de ta boucle inchangé)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.net.disconnect()
@@ -235,6 +239,29 @@ class Game:
                         self.movement[0] = False
                     if event.key == pygame.K_RIGHT:
                         self.movement[1] = False
+
+            self.controller.update() #Pour la mannette
+            if self.controller.joystick:  # Si une manette est connectée
+                if self.controller.button_a:
+                    if self.player.jump():
+                        self.sfx['jump'].play()
+                if self.controller.button_b:
+                    self.player.dash()
+
+                # Mouvement avec le stick ou D-pad :
+                move_x = 0
+                if self.controller.left_stick_x < -0.5 or self.controller.dpad_left:
+                    move_x = -1
+                elif self.controller.left_stick_x > 0.5 or self.controller.dpad_right:
+                    move_x = 1
+                self.movement = [move_x < 0, move_x > 0]
+
+                # Gâchettes :
+                if self.controller.left_trigger > 0.2:
+                    self.player.dash()
+                if self.controller.right_trigger > 0.2:
+                    self.player.dash()
+
                         
             if self.transition:
                 transition_surf = pygame.Surface(self.display.get_size())
