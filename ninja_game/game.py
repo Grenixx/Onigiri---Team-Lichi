@@ -41,6 +41,9 @@ class Game:
             'enemy/run': Animation(load_images('entities/enemy/run'), img_dur=4),
             'player/idle': Animation(load_images('entities/player/idle'), img_dur=6),
             'player/run': Animation(load_images('entities/player/run'), img_dur=4),
+            'player/attack_front': Animation(load_images('entities/player/attack_front'), img_dur=20, loop=False),
+            'player/attack_up': Animation(load_images('entities/player/attack_up'), img_dur=20, loop=False),
+            'player/attack_down': Animation(load_images('entities/player/attack_down'), img_dur=20, loop=False),
             'player/jump': Animation(load_images('entities/player/jump')),
             'player/slide': Animation(load_images('entities/player/slide')),
             'player/wall_slide': Animation(load_images('entities/player/wall_slide')),
@@ -48,6 +51,7 @@ class Game:
             'particle/particle': Animation(load_images('particles/particle'), img_dur=6, loop=False),
             'gun': load_image('gun.png'),
             'projectile': load_image('projectile.png'),
+            'weapon': load_image('entities/weapon/weapon.png')
         }
         
         self.sfx = {
@@ -117,7 +121,13 @@ class Game:
         
         while True:
             # Définir le mapping action -> int
-            action_mapping = {"idle":0, "run":1, "jump":2, "wall_slide":3, "slide":4}
+            action_mapping = {
+                "idle": 0, "run": 1, "jump": 2, "wall_slide": 3, "slide": 4,
+                # Ajout des actions d'attaque
+                "attack_front": 5,
+                "attack_up": 6,
+                "attack_down": 7,
+            }
 
             action_id = action_mapping[self.player.action]
             flip_byte = 1 if self.player.flip else 0
@@ -220,25 +230,58 @@ class Game:
             
             # (le reste de ta boucle inchangé)
             for event in pygame.event.get():
+                # Si l'utilisateur ferme la fenêtre
                 if event.type == pygame.QUIT:
                     self.net.disconnect()
                     pygame.quit()
                     sys.exit()
+                # Si une touche est pressée
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_LEFT:
+                    # Mouvement horizontal
+                    if event.key == pygame.K_LEFT or event.key == pygame.K_q:
                         self.movement[0] = True
-                    if event.key == pygame.K_RIGHT:
+                        self.player.is_pressed = 'left'
+                    if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                         self.movement[1] = True
-                    if event.key == pygame.K_UP:
-                        if self.player.jump():
+                        self.player.is_pressed = 'right'
+                    if event.key == pygame.K_UP or event.key == pygame.K_z:
+                        self.player.is_pressed = 'up'
+                    # On vérifie d'abord la touche, PUIS on tente de sauter.
+                    if event.key == pygame.K_SPACE:
+                        if self.player.request_jump():
                             self.sfx['jump'].play()
-                    if event.key == pygame.K_x:
+                    if event.key == pygame.K_DOWN or event.key == pygame.K_s:
+                        # On stocke l'information que la touche bas est pressée
+                        self.player.is_pressed = 'down'
+                    if event.key == pygame.K_x or event.key == pygame.K_LSHIFT:
                         self.player.dash()
-                if event.type == pygame.KEYUP:
-                    if event.key == pygame.K_LEFT:
+                # Si une touche est relâchée
+                if event.type == pygame.KEYUP or event.type == pygame.K_SPACE:
+                    if event.key == pygame.K_LEFT or event.key == pygame.K_q:
                         self.movement[0] = False
-                    if event.key == pygame.K_RIGHT:
+                    if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                         self.movement[1] = False
+                    # Si on relâche une touche directionnelle, on réinitialise la variable
+                    if event.key in [pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_d, pygame.K_a, pygame.K_SPACE, pygame.K_s]:
+                        self.player.is_pressed = None
+                # Si un bouton de la souris est pressé
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:  # Clic gauche
+                        # Vérifie les touches actuellement maintenues
+
+                        keys = pygame.key.get_pressed()
+                        if keys[pygame.K_UP] or keys[pygame.K_z]:
+                            direction = 'up'
+                        elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
+                            direction = 'down'
+                        elif keys[pygame.K_LEFT] or keys[pygame.K_q]:
+                            direction = 'left'
+                        elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+                            direction = 'right'
+                        else:
+                            direction = None  # aucune direction active
+
+                        self.player.attack(direction)
 
             self.controller.update() #Pour la mannette
             if self.controller.joystick:  # Si une manette est connectée
