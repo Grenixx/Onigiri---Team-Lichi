@@ -15,6 +15,7 @@ from scripts.spark import Spark
 from scripts.shader_bg import ShaderBackground
 from client_network import ClientNetwork
 from controller import Controller  
+from scripts.lighting import LightingSystem
 
 class Game:
     def __init__(self):
@@ -51,7 +52,7 @@ class Game:
             'particle/particle': Animation(load_images('particles/particle'), img_dur=6, loop=False),
             'gun': load_image('gun.png'),
             'projectile': load_image('projectile.png'),
-            'weapon': load_image('entities/weapon/weapon.png')
+            'weapon': load_image('entities/weapon/weapon2.png')
         }
         
         self.sfx = {
@@ -89,6 +90,9 @@ class Game:
         self.shader_bg = ShaderBackground(320, 240, "data/shaders/3.5.frag")
 
         self.controller = Controller()
+
+        self.lighting = LightingSystem(self.display.get_size())
+
         
     def load_level(self, map_id):
         self.tilemap.load('data/maps/' + str(map_id) + '.json')
@@ -280,7 +284,7 @@ class Game:
                             direction = 'right'
                         else:
                             direction = None  # aucune direction active
-
+    
                         self.player.attack(direction)
 
             self.controller.update() #Pour la mannette
@@ -311,6 +315,19 @@ class Game:
                 pygame.draw.circle(transition_surf, (255, 255, 255), (self.display.get_width() // 2, self.display.get_height() // 2), (30 - abs(self.transition)) * 8)
                 transition_surf.set_colorkey((255, 255, 255))
                 self.display.blit(transition_surf, (0, 0))
+
+            # --- Gestion de la lumière dynamique ---
+            self.lighting.clear()
+
+            # Lumière du joueur principale
+            player_light_pos = (
+                int(self.player.rect().centerx - self.scroll[0]),
+                int(self.player.rect().centery - self.scroll[1])
+            )
+            self.lighting.draw_light(player_light_pos, radius=200, intensity=1.2, color=(255, 240, 200))
+
+            self.lighting.apply(self.display)
+            #--- Fin de la gestion de la lumière dynamique ---
             
             # --- afficher les autres joueurs ---
             self.remote_players_renderer.render(self.display, offset=render_scroll)
@@ -321,8 +338,6 @@ class Game:
             screenshake_offset = (random.random() * self.screenshake - self.screenshake / 2, random.random() * self.screenshake - self.screenshake / 2)
             self.screen.blit(pygame.transform.scale(self.display_2, self.screen.get_size()), screenshake_offset)
 
-
-            
 
             pygame.display.update()
             self.clock.tick(60)

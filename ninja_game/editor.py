@@ -126,6 +126,7 @@ class Editor:
                         self.tilemap.autotile()
                     if event.key == pygame.K_o:
                         self.tilemap.save('map.json')
+                        print('Map saved to map.json')
                     if event.key == pygame.K_LSHIFT:
                         self.shift = True
                 if event.type == pygame.KEYUP:
