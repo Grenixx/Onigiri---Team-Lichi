@@ -87,7 +87,7 @@ class Game:
         self.net.connect()
         self.remote_players = {}
         
-        self.shader_bg = ShaderBackground(320, 240, "data/shaders/3.5.frag")
+        self.shader_bg = ShaderBackground(320, 240, "data/shaders/3.4.frag")
 
         self.controller = Controller()
 
@@ -330,7 +330,7 @@ class Game:
             light_sources = [
                 (self.player.rect().centerx - render_scroll[0],
                 self.player.rect().centery - render_scroll[1],
-                150, (220, 240, 255))
+                300, (220, 240, 255))
             ]
             self.lighting.render(self.display_2, light_sources, pygame.time.get_ticks())
 
