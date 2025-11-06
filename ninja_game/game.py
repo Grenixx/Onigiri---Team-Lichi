@@ -34,6 +34,7 @@ class Game:
         self.assets = {
             'decor': load_images('tiles/decor'),
             'grass': load_images('tiles/grass'),
+            'grassSpawner': load_images('grass'), #celui qui retire le commentaire je l encule 
             'large_decor': load_images('tiles/large_decor'),
             'stone': load_images('tiles/stone'),
             'player': load_image('entities/player.png'),

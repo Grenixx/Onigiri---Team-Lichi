@@ -1,10 +1,11 @@
+import pygame
 import math
 import random
-import pygame
 from scripts.particle import Particle
 from scripts.spark import Spark
-import pygame
 from scripts.weapon import Weapon
+from scripts.grass import GrassManager
+
 
 class PhysicsEntity:
     def __init__(self, game, e_type, pos, size):
@@ -165,6 +166,28 @@ class Player(PhysicsEntity):
         else:
             self.velocity[0] = min(self.velocity[0] + 0.1, 0)
         
+        if hasattr(self.game.tilemap, 'grass_manager'):
+            ts = self.game.tilemap.tile_size
+
+            # on calcule la "vitesse" effective (input + velocity)
+            input_speed = math.hypot(self.last_movement[0], self.last_movement[1])
+            vel_speed = math.hypot(self.velocity[0], self.velocity[1])
+            speed = input_speed + vel_speed
+
+            # Si on bouge (ou si on dash), applique une impulsion — sinon ne rien faire
+            # Ajuste threshold selon ton besoin (0.1 = très sensible)
+            if speed > 0.1 or abs(self.dashing) > 0:
+                # utilise la center en pixels
+                force_pos = self.rect().center
+
+                # rayon et dropoff en pixels (ex: 2.5 tiles et 1.2 tiles)
+                radius_px = int(ts * 2.5)
+                dropoff_px = int(ts * 1.2)
+
+                # applique la force UNE FOIS pour cette frame (si tu veux un "sweep" prolongé
+                # tu peux appliquer un petit nombre de frames, mais pas chaque frame)
+                self.game.tilemap.grass_manager.apply_force(force_pos, radius_px, dropoff_px)
+
     
     def render(self, surf, offset=(0, 0)):
         if abs(self.dashing) <= 50:

@@ -1,6 +1,7 @@
 import json
-
+import random
 import pygame
+from scripts.grass import GrassManager   # 🌿 AJOUT — pour gérer l'herbe
 
 AUTOTILE_MAP = {
     tuple(sorted([(1, 0), (0, 1)])): 0,
@@ -18,13 +19,19 @@ NEIGHBOR_OFFSETS = [(-1, 0), (-1, -1), (0, -1), (1, -1), (1, 0), (0, 0), (-1, 1)
 PHYSICS_TILES = {'grass', 'stone'}
 AUTOTILE_TYPES = {'grass', 'stone'}
 
+
 class Tilemap:
     def __init__(self, game, tile_size=16):
         self.game = game
         self.tile_size = tile_size
         self.tilemap = {}
         self.offgrid_tiles = []
-        
+
+        # 🌿 AJOUT — gestionnaire d’herbe
+        self.grass_manager = GrassManager("data/images/grass", tile_size=self.tile_size, shade_amount=120, stiffness=300)
+        self.grass_manager.enable_ground_shadows(shadow_strength=60, shadow_radius=3, shadow_color=(0, 0, 1))
+
+
     def extract(self, id_pairs, keep=False):
         matches = []
         for tile in self.offgrid_tiles.copy():
@@ -45,6 +52,7 @@ class Tilemap:
         
         return matches
     
+    
     def tiles_around(self, pos):
         tiles = []
         tile_loc = (int(pos[0] // self.tile_size), int(pos[1] // self.tile_size))
@@ -54,10 +62,12 @@ class Tilemap:
                 tiles.append(self.tilemap[check_loc])
         return tiles
     
+    
     def save(self, path):
         f = open(path, 'w')
         json.dump({'tilemap': self.tilemap, 'tile_size': self.tile_size, 'offgrid': self.offgrid_tiles}, f)
         f.close()
+        
         
     def load(self, path):
         f = open(path, 'r')
@@ -67,6 +77,10 @@ class Tilemap:
         self.tilemap = map_data['tilemap']
         self.tile_size = map_data['tile_size']
         self.offgrid_tiles = map_data['offgrid']
+
+        # 🌿 AJOUT — générer l’herbe après chargement
+        self.generate_grass()
+        
         
     def solid_check(self, pos):
         tile_loc = str(int(pos[0] // self.tile_size)) + ';' + str(int(pos[1] // self.tile_size))
@@ -74,12 +88,14 @@ class Tilemap:
             if self.tilemap[tile_loc]['type'] in PHYSICS_TILES:
                 return self.tilemap[tile_loc]
     
+    
     def physics_rects_around(self, pos):
         rects = []
         for tile in self.tiles_around(pos):
             if tile['type'] in PHYSICS_TILES:
                 rects.append(pygame.Rect(tile['pos'][0] * self.tile_size, tile['pos'][1] * self.tile_size, self.tile_size, self.tile_size))
         return rects
+    
     
     def autotile(self):
         for loc in self.tilemap:
@@ -94,7 +110,19 @@ class Tilemap:
             if (tile['type'] in AUTOTILE_TYPES) and (neighbors in AUTOTILE_MAP):
                 tile['variant'] = AUTOTILE_MAP[neighbors]
 
-    def render(self, surf, offset=(0, 0)):
+    
+    # 🌿 AJOUT — génération d’herbe sur les tuiles "grass"
+    def generate_grass(self):
+        for loc, tile in self.tilemap.items():
+            if tile['type'] == 'grassSpawner':
+                pos = (tile['pos'][0], tile['pos'][1])
+                density = random.randint(3, 7)
+                # IDs [0, 1, 2] -> images dans assets/grass/
+                self.grass_manager.place_tile(pos, density, [0, 1, 2])
+
+    
+    # 🌿 MODIFIÉ — ajout du paramètre dt
+    def render(self, surf, offset=(0, 0), dt=0):
         for tile in self.offgrid_tiles:
             surf.blit(self.game.assets[tile['type']][tile['variant']], (tile['pos'][0] - offset[0], tile['pos'][1] - offset[1]))
             
@@ -103,4 +131,9 @@ class Tilemap:
                 loc = str(x) + ';' + str(y)
                 if loc in self.tilemap:
                     tile = self.tilemap[loc]
-                    surf.blit(self.game.assets[tile['type']][tile['variant']], (tile['pos'][0] * self.tile_size - offset[0], tile['pos'][1] * self.tile_size - offset[1]))
+                    surf.blit(self.game.assets[tile['type']][tile['variant']],
+                              (tile['pos'][0] * self.tile_size - offset[0],
+                               tile['pos'][1] * self.tile_size - offset[1]))
+
+        # 🌿 AJOUT — rendu de l’herbe par-dessus le sol
+        self.grass_manager.update_render(surf, dt=dt, offset=offset)

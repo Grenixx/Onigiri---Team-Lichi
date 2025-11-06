@@ -23,6 +23,7 @@ class Editor:
             'large_decor': load_images('tiles/large_decor'),
             'stone': load_images('tiles/stone'),
             'spawners': load_images('tiles/spawners'),
+            'grassSpawner': load_images('grass'), #celui qui retire le commentaire je l encule 
         }
         
         self.movement = [False, False, False, False]
