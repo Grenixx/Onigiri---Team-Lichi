@@ -310,9 +310,9 @@ class Lance:
         
         # On détermine l'angle en fonction de la direction demandée ET de l'orientation du joueur
         if direction == 'up':
-            self.angle = -90 if self.owner.flip else 90
+            self.angle = 90
         elif direction == 'down':
-            self.angle = 90 if self.owner.flip else -90
+            self.angle = - 90
         # Pour les attaques frontales (gauche, droite, ou aucune direction spécifiée)
         else:
             if self.owner.flip: # Si le joueur regarde à gauche
