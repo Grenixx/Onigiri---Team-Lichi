@@ -326,10 +326,20 @@ class Game:
                 transition_surf.set_colorkey((255, 255, 255))
                 self.display.blit(transition_surf, (0, 0))
             
-            self.tilemap.grass_manager.update_render(self.display,1/60, offset=render_scroll)
+            self.tilemap.grass_manager.update_render(self.display,1/60, offset=self.scroll)
             #self.tilemap.grass_manager.apply_force(self.player.pos, 12, 24)
+            #positions = {}
+            #for pid, data in self.remote_players.items():
+            #    if pid == self.net.id:
+            #        continue  # on ignore soi-même
+            #    x, y, action, flip = data
+            #    positions[pid] = (x, y)
             
-
+            #if pid in self.remote_players:
+            #    if pid == self.net.id:
+             #       continue  # on ignore soi-même
+             #   else:
+             #       print(positions[pid])
             # --- COMPOSITION FINALE ---
             # On blitte la tilemap et les entités sur display_2
             self.display_2.blit(self.display, (0, 0))

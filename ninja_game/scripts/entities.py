@@ -167,9 +167,9 @@ class Player(PhysicsEntity):
             self.velocity[0] = min(self.velocity[0] + 0.1, 0)
         
         
-        force_pos = self.rect().center  # (x_pixels, y_pixels)
+        #force_pos = self.rect().center  # (x_pixels, y_pixels)
         #self.game.tilemap.grass_manager.update_render(self.game.display,1/60, offset=self.game.scroll)
-        self.game.tilemap.grass_manager.apply_force(force_pos, 6, 12)
+        self.game.tilemap.grass_manager.apply_force(self.pos, 9, 18)
 
     
     def render(self, surf, offset=(0, 0)):
@@ -266,6 +266,7 @@ class PurpleCircle:
             
         to_remove = []
         weapon_rect = player.weapon.weapon_equiped.rect()
+
         
         for eid, (ex, ey) in list(self.game.net.enemies.items()):
             enemy_rect = pygame.Rect(ex - self.radius, ey - self.radius, self.radius * 2, self.radius * 2)
@@ -283,6 +284,9 @@ class PurpleCircle:
             if hit_by_dash or hit_by_weapon:
                 to_remove.append(eid)
 
+        
+            
+
         for eid in to_remove:
             # Supprime localement pour effet instantané
             if eid in self.game.net.enemies:
@@ -298,6 +302,9 @@ class PurpleCircle:
             screen_x = x - offset[0]
             screen_y = y - offset[1]
             pygame.draw.circle(surf, (128, 0, 128), (int(screen_x), int(screen_y)), self.radius)
+            self.game.tilemap.grass_manager.apply_force((x, y), 5, 20)
+            
+            
             
 class RemotePlayerRenderer:
     """Affiche et anime les autres joueurs avec leur sprite."""
@@ -326,6 +333,7 @@ class RemotePlayerRenderer:
         def render(self, surf, offset=(0,0)):
             img = pygame.transform.flip(self.animation.img(), self.flip, False)
             surf.blit(img, (self.pos[0] - offset[0] - 3, self.pos[1] - offset[1] - 3))
+            
 
     def __init__(self, game):
         self.game = game
@@ -338,11 +346,14 @@ class RemotePlayerRenderer:
 
             x, y, action, flip = data
 
+            self.game.tilemap.grass_manager.apply_force((x, y), 9, 18)
+            
             if pid not in self.players:
                 self.players[pid] = self.RemotePlayer(self.game, pid, (x,y), action, flip)
 
             self.players[pid].update((x,y), action, flip)
             self.players[pid].render(surf, offset)
+
 
 
             

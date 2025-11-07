@@ -6,6 +6,13 @@ import miniupnpc
 from TilemapServer import TilemapServer
 from enemy_manager import EnemyManager
 
+# Message types:
+#  10 : Connexion
+#   1 : Déconnexion
+#   0 : Mise à jour du joueur (position/action)
+#   3 : Suppression d’un ennemi
+
+
 
 # ==============================
 # --- Player Manager ---
@@ -108,11 +115,14 @@ class GameServer:
         msg_type = data[0]
 
         # --- Connexion ---
-        if addr not in self.players.clients and msg_type == 0:
-            pid = self.players.add_player(addr)
-            self.sock.sendto(struct.pack("I", pid), addr)
-            print(f"Nouveau joueur {pid} ({addr})")
+        # --- Connexion ---
+        if msg_type == 10:  # 10 = connexion
+            if addr not in self.players.clients:
+                pid = self.players.add_player(addr)
+                self.sock.sendto(struct.pack("I", pid), addr)
+                print(f"Nouveau joueur {pid} ({addr})")
             return
+
 
         # --- Déconnexion ---
         if msg_type == 1:

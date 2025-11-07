@@ -18,16 +18,17 @@ class ClientNetwork:
         threading.Thread(target=self.listen, daemon=True).start()
 
     def connect(self):
-        # on envoie un paquet vide pour que le serveur nous attribue un ID
-        self.sock.sendto(b'\x00' * 24, self.server)
+        # message de type 10 = demande de connexion
+        self.sock.sendto(b'\x0A', self.server)  # 0x0A = 10
         while self.id is None:
             try:
-                data, _ = self.sock.recvfrom(4)  # 4 bytes pour ID uniquement
+                data, _ = self.sock.recvfrom(4)
                 if len(data) >= 4:
                     self.id = struct.unpack("I", data)[0]
                     print(f"Connected with ID {self.id}")
             except socket.timeout:
-                pass  # on attend la réponse
+                pass
+
 
     def listen(self):
         while self.running:
