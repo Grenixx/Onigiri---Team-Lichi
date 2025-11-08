@@ -36,3 +36,8 @@ class TilemapServer:
                         rects.append(((x * self.tile_size, y * self.tile_size),
                                       self.tile_size, self.tile_size))
         return rects
+    
+    def check_type(self, pos):
+        tile_loc = f"{int(pos[0] // self.tile_size)};{int(pos[1] // self.tile_size)}"
+        if tile_loc in self.tilemap:
+            return self.tilemap[tile_loc]['type']
