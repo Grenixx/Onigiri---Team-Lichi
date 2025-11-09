@@ -150,10 +150,10 @@ class Game:
             flip_byte = 1 if self.player.flip else 0
             self.net.send_state(self.player.pos[0], self.player.pos[1], action_id, flip_byte)
 
-            self.scroll[0] += (self.player.rect().centerx - self.display.get_width() / 2 - self.scroll[0])  # /30 smooth cam
-            self.scroll[1] += (self.player.rect().centery - self.display.get_height() / 2 - self.scroll[1]) # /30 smooth cam
+            self.scroll[0] += (self.player.rect().centerx - self.display.get_width() / 2 - self.scroll[0])   /30 #smooth cam
+            self.scroll[1] += (self.player.rect().centery - self.display.get_height() / 2 - self.scroll[1])  /30 #smooth cam
             render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
-
+            subpixel_offset = (self.scroll[0] - render_scroll[0], self.scroll[1] - render_scroll[1])
 
             # mettre à jour les autres joueurs
             #self.remote_players = self.net.players
@@ -371,15 +371,21 @@ class Game:
             self.lighting.render(self.display_2, light_sources, pygame.time.get_ticks())
             """
             # --- AFFICHAGE FINAL ---
-            screenshake_offset = (
-                random.random() * self.screenshake - self.screenshake / 2,
-                random.random() * self.screenshake - self.screenshake / 2
-            )
-            self.screen.blit(
-                pygame.transform.scale(self.display_2, self.screen.get_size()),
-                screenshake_offset
+            subpixel_offset = (
+                -(self.scroll[0] - int(self.scroll[0])) * (self.screen.get_width() / self.display.get_width()),
+                -(self.scroll[1] - int(self.scroll[1])) * (self.screen.get_height() / self.display.get_height())
             )
 
+            # combine with screenshake if you want
+            offset = (
+                subpixel_offset[0] + random.random() * self.screenshake - self.screenshake / 2,
+                subpixel_offset[1] + random.random() * self.screenshake - self.screenshake / 2
+            )
+
+            # now draw scaled game surface with sub-pixel offset
+            scaled = pygame.transform.scale(self.display_2, self.screen.get_size())
+            self.screen.blit(scaled, offset)
+            
             # --- AFFICHAGE DES FPS ---
             if self.debug:
                 fps = int(self.clock.get_fps())
