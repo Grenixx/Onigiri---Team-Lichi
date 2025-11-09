@@ -23,7 +23,7 @@ class Game:
         pygame.init()
 
         pygame.display.set_caption('ninja game')
-        self.screen = pygame.display.set_mode((640*3, 360*3))
+        self.screen = pygame.display.set_mode((640*2, 360*2))
         self.display = pygame.Surface((320, 180), pygame.SRCALPHA)
         self.display_2 = pygame.Surface((320, 180))
 
@@ -248,6 +248,8 @@ class Game:
                     sys.exit()
                 # Si une touche est pressée
                 if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_F1:
+                        self.player.weapon.weapon_equiped.toggle_debug()
                     # Mouvement horizontal
                     if event.key == pygame.K_LEFT or event.key == pygame.K_q:
                         self.movement[0] = True
