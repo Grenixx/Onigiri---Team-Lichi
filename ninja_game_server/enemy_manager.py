@@ -4,7 +4,7 @@ from math import *
 from TilemapServer import PHYSICS_TILES
 
 class EnemyManager:
-    def __init__(self, tilemap, num_enemies=1, speed=1.5):
+    def __init__(self, tilemap, num_enemies=200, speed=1.5):
         self.tilemap = tilemap
         self.enemies = {}
         self.next_enemy_id = 1
@@ -196,8 +196,6 @@ def raycast_pos(pos: list, angle: float, tilemap, dist_max: float = 1000, dist_c
     if not pos_check:
         return None
     
-    print(pos_check)
-    
     for _ in range(precision):
         vec = [i / 2 for i in vec]
         check_type = tilemap.check_type((pos_check))
@@ -205,20 +203,16 @@ def raycast_pos(pos: list, angle: float, tilemap, dist_max: float = 1000, dist_c
             pos_check = sub_vecs(pos_check, vec)
         else:
             pos_check = add_vecs(pos_check, vec)
-        print(pos_check)
     
     # Ajustements
     if precision >= 10:
         pos_check = round_pos_if_possible(pos_check, dist_check * 2**-(precision - 1))
-        print(f"Après ajustements: {pos_check}")
         if fix_collisions:
             if is_round(pos_check[0]) and angle >= -pi/2 and angle <= pi/2: # collide left side of tile
                 pos_check[0] -= 0.0000000000001
             if is_round(pos_check[1]) and angle >= 0 and angle <= pi: # collide up side of tile
                 pos_check[1] -= 0.0000000000001
-            print(f"Après fix collisions: {pos_check}")
 
-    print()
     return pos_check
 
 """ todo:
