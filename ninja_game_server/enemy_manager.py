@@ -1,154 +1,227 @@
 import random
 from math import *
-import pygame  # facultatif, pour debug visuel
+
+from TilemapServer import PHYSICS_TILES
 
 class EnemyManager:
-    def __init__(self, tilemap, num_enemies=1, speed=1.0):
+    def __init__(self, tilemap, num_enemies=1, speed=1.5):
         self.tilemap = tilemap
         self.enemies = {}
         self.next_enemy_id = 1
         self.speed = speed
-        self.create_blob(num_enemies)
+        for _ in range(num_enemies):
+            self.create_blob([random.randint(100,250), random.randint(40,100)])
 
-    def create_blob(self, num):
-        for _ in range(num):
-            eid = self.next_enemy_id
-            self.next_enemy_id += 1
-            self.enemies[eid] = {
-                'x': 50,
-                'y': 50,
-                'vx': 0.0,
-                'vy': 0.0,
-                'target_player': None,
-            }
-        print(f"{num} ennemis créés !")
+    def create_blob(self, pos: list):
+        eid = self.next_enemy_id
+        self.next_enemy_id += 1
+        self.enemies[eid] = {
+            'x': pos[0],
+            'y': pos[1],
+            'vx': 0.0,
+            'vy': 0.0,
+            'target_player': None,
+        }
+        print(f"ennemi créés en {pos} !")
 
-    def update(self, players, screen=None):
+    def update(self, players):
         """Met à jour tous les ennemis en fonction de la map et des joueurs"""
         if not players:
             return
 
-        for eid, enemy in self.enemies.items():
+        def can_see_player(enemy, pid):
+            return not raycast_collide([enemy['x'], enemy['y']], angle(vector_to([enemy['x'], enemy['y']], players[pid])), self.tilemap, distane_to([enemy['x'], enemy['y']], players[pid]) - 10, 4, PHYSICS_TILES)
+        
+        enemies = list_copy(self.enemies.items()) #dict can change size when running for loop
+        for eid, enemy in enemies:
             pos = [enemy['x'], enemy['y']]
+            
+            # --- Gravité ---
+            if not self.tilemap.solid_check((pos[0], pos[1] + 4)):
+                enemy['vy'] += 0  # tombe
+            else:
+                enemy['vy'] = 0
 
-            # --- Trouver le joueur le plus proche ---
-            closest_pid, closest_dist = None, None
-            for pid, ppos in players.items():
-                dist = distance_squared_to(pos, ppos)
-                if closest_pid is None or dist < closest_dist:
-                    closest_pid, closest_dist = pid, dist
+            # --- Trouver la cible la plus proche ---
+            closest_dist = None
+            closest_pid = None
+            for pid in players.keys():
+                dist = distance_squared_to(pos, players[pid])
+                if closest_dist == None or closest_dist > dist:
+                    closest_dist,closest_pid = dist,pid
 
-            if closest_pid is None:
-                continue
+            if can_see_player(enemy, closest_pid):
+                enemy['target_player'] = closest_pid
+                step = [0,0]
+                dist = distane_to(pos, players[closest_pid])
+                if dist > 1:
+                    step = normalized(vector_to(pos, players[closest_pid]))
+                    step = [i * self.speed for i in step]
 
-            player_pos = players[closest_pid]
-            to_player = normalized(vector_to(pos, player_pos))
+                # --- Test collisions map ---
+                new_x = pos[0] + step[0]
+                new_y = pos[1] + step[1] + enemy['vy']
 
-            # --- Raycasts pour éviter les obstacles ---
-            avoid_vec = [0.0, 0.0]
-            num_rays = 9
-            fov = radians(90)  # champ de vision 90°
-            ray_length = 10
+                if not self.tilemap.solid_check((new_x, pos[1])):
+                    enemy['vx'] = step[0]
+                else:
+                    enemy['vx'] = 0
 
-            main_angle = angle(to_player)
+                if not self.tilemap.solid_check((pos[0], new_y)):
+                    enemy['vy'] += step[1]
+                else:
+                    enemy['vy'] = 0
 
-            for i in range(num_rays):
-                # Rayons répartis autour du joueur
-                offset = (i - num_rays // 2) * (fov / num_rays)
-                ray_angle = main_angle + offset
+                # Limites de la map
+                enemy['x'] = max(0, min(enemy['x'] + enemy['vx'], 1000))
+                enemy['y'] = max(0, min(enemy['y'] + enemy['vy'], 1000))
 
-                hit_dist = raycast_distance(pos, ray_angle, self.tilemap, ray_length, 4)
-                color = (100, 100, 100)
+                enemy['vy'] = 0
 
-                if hit_dist is not None:
-                    # plus l’obstacle est proche → plus la poussée est forte
-                    strength = 1 - (hit_dist / ray_length)
-                    push = vec_from_angle(strength, ray_angle + pi)
-                    avoid_vec = add_vecs(avoid_vec, push)
-                    color = (255, 0, 0)
+            else:
+                enemy['target_player'] = None
+                enemy['vx'], enemy['vy'] = 0,0
+                
+                # test
+                if random.randint(0, 500) == 0:
+                    new_blob_pos = raycast_pos(pos, angle(vector_to(pos, players[pid])), self.tilemap, distane_to(pos, players[pid]) - 10, 4, 10, PHYSICS_TILES, True)
+                    if new_blob_pos != None:
+                        self.create_blob(new_blob_pos)
+                    else:
+                        print("raycast_pos failed")
 
-                # --- Dessin visuel du raycast ---
-                if screen:
-                    ray_end = add_vecs(pos, vec_from_angle(ray_length, ray_angle))
-                    pygame.draw.line(screen, color, pos, ray_end, 1)
+def list_copy(lst):
+    """
+    Empêche les effets de bord dans les listes
+    """
+    return [i for i in lst]
 
-            # --- Combinaison des forces ---
-            move_dir = add_vecs(to_player, avoid_vec)
-            if norm(move_dir) > 0:
-                move_dir = normalized(move_dir)
+def add_vecs(vec1: list, vec2: list):
+    return [vec1[i] + vec2[i] for i in range(2)]
 
-            step = [move_dir[0] * self.speed, move_dir[1] * self.speed]
+def sub_vecs(vec1: list, vec2: list):
+    return [vec1[i] - vec2[i] for i in range(2)]
 
-            # --- Test collision simple ---
-            new_x = pos[0] + step[0]
-            new_y = pos[1] + step[1]
+def vector_to(pos1: list,pos2: list):
+    """
+    Renvoie un vecteur de la position 1 vers 2
+    """
+    return [pos2[0] - pos1[0], pos2[1] - pos1[1]]
 
-            if not self.tilemap.solid_check((new_x, pos[1])):
-                enemy['x'] = new_x
-            if not self.tilemap.solid_check((pos[0], new_y)):
-                enemy['y'] = new_y
+def distance_squared_to(pos1: list,pos2: list):
+    """
+    Renvoie la distance au carré entre la position 1 et 2
+    """
+    vec = vector_to(pos1,pos2)
+    return vec[0] ** 2 + vec[1] ** 2
 
-# ==========================================================
-# --- Fonctions utilitaires ---
-# ==========================================================
+def distane_to(pos1: list,pos2: list):
+    """
+    Renvoie la distance entre la position 1 et 2
+    """
+    return sqrt(distance_squared_to(pos1,pos2))
 
-def add_vecs(a, b):
-    return [a[0] + b[0], a[1] + b[1]]
+def norm(vec: list):
+    return distane_to([0,0],vec)
 
-def sub_vecs(a, b):
-    return [a[0] - b[0], a[1] - b[1]]
+def normalized(vec: list):
+    """
+    Renvoie le vecteur passé en entrée normalisé
+    """
+    norm = distane_to([0,0],vec)
+    vec = [i/norm for i in vec]
+    return vec
 
-def vector_to(a, b):
-    return [b[0] - a[0], b[1] - a[1]]
+def is_normalized(vec: list):
+    """
+    Vérifie si le vecteur est normalisé
+    """
+    return norm(vec) == 1
 
-def distance_squared_to(a, b):
-    dx, dy = b[0] - a[0], b[1] - a[1]
-    return dx * dx + dy * dy
+def vec_from_angle(norm: float, angle: float):
+    return [cos(angle) * norm, sin(angle) * norm]
 
-def distance_to(a, b):
-    return sqrt(distance_squared_to(a, b))
-
-def norm(v):
-    return sqrt(v[0] ** 2 + v[1] ** 2)
-
-def normalized(v):
-    n = norm(v)
+def angle(vec: list):
+    n = norm(vec)
     if n == 0:
-        return [0, 0]
-    return [v[0] / n, v[1] / n]
+        return 0
+    ax = acos(vec[0] / n)
+    ay = asin(vec[1] / n)
+    if ax == ay:
+        return ax
+    if ay < 0:
+        if ax < pi / 2:
+            return ay
+        return -ax
+    return ax
 
-def vec_from_angle(length, angle):
-    return [cos(angle) * length, sin(angle) * length]
+def is_within(pos, pos1, pos2):
+    pos_r1 = [pos1[i] <= pos[i] and pos2[i] >= pos[i] for i in range(2)]
+    pos_r2 = [pos1[i] >= pos[i] and pos2[i] <= pos[i] for i in range(2)]
+    return (pos_r1[0] and pos_r1[1]) or (pos_r2[0] and pos_r2[1])
 
-def angle(v):
-    return atan2(v[1], v[0])
-
-# ==========================================================
-# --- Raycasting ---
-# ==========================================================
-
-def raycast_collide(pos, angle, tilemap, dist_max=100, step=4, mask=[]):
-    """Renvoie True si le rayon touche un obstacle"""
-    vec = vec_from_angle(step, angle)
-    pos_check = list(pos)
+def raycast_collide(pos: list, angle: float, tilemap, dist_max: float = 1000, dist_check: float = 4, mask: list = [], return_pos: bool = False):
+    """
+    
+    """
+    vec = vec_from_angle(dist_check, angle)
     dist = 0
+    pos_check = pos
     while dist <= dist_max:
-        check_type = tilemap.check_type((pos_check[0], pos_check[1]))
-        if (mask == [] and check_type is not None) or (check_type in mask):
+        check_type = tilemap.check_type((pos_check))
+        if (mask == [] and check_type != None) or (check_type in mask):
+            if return_pos:
+                return pos_check
             return True
         pos_check = add_vecs(pos_check, vec)
-        dist += step
+        dist += dist_check
     return False
 
-def raycast_distance(pos, angle, tilemap, dist_max=100, step=4, mask=[]):
-    """Renvoie la distance jusqu’à l’obstacle le plus proche (ou None)"""
-    vec = vec_from_angle(step, angle)
-    pos_check = list(pos)
+def is_round(num):
+    return round(num) == num
+
+def is_almost_round(num, margin):
+    return floor(num) != floor(num + margin) or floor(num) != floor(num - margin)
+
+def round_pos_if_possible(pos, margin):
+    return [round(i) if is_almost_round(i, margin) else i for i in pos]
+
+def raycast_pos(pos: list, angle: float, tilemap, dist_max: float = 1000, dist_check: float = 4, precision : int = 4, mask: list = [], fix_collisions: bool = False):
+    """
+    
+    """
+    vec = vec_from_angle(dist_check, angle)
     dist = 0
-    while dist <= dist_max:
-        check_type = tilemap.check_type((pos_check[0], pos_check[1]))
-        if (mask == [] and check_type is not None) or (check_type in mask):
-            return dist
-        pos_check = add_vecs(pos_check, vec)
-        dist += step
-    return None
+    pos_check = raycast_collide(pos, angle, tilemap, dist_max, dist_check, mask, True)
+    if not pos_check:
+        return None
+    
+    print(pos_check)
+    
+    for _ in range(precision):
+        vec = [i / 2 for i in vec]
+        check_type = tilemap.check_type((pos_check))
+        if (mask == [] and check_type != None) or (check_type in mask):
+            pos_check = sub_vecs(pos_check, vec)
+        else:
+            pos_check = add_vecs(pos_check, vec)
+        print(pos_check)
+    
+    # Ajustements
+    if precision >= 10:
+        pos_check = round_pos_if_possible(pos_check, dist_check * 2**-(precision - 1))
+        if fix_collisions:
+            if is_round(pos_check[0]) and angle >= -pi/2 and angle <= pi/2: # collide left side of tile
+                pos_check[0] -= 0.00000000000001
+            if is_round(pos_check[1]) and angle >= 0 and angle <= pi: # collide up side of tile
+                pos_check[1] -= 0.00000000000001
+
+    print()
+    print(f"Après ajustements: {pos_check}")
+    return pos_check
+
+""" todo:
+create class for raycast and vectors
+add documentation
+add side of block raycast hit in class
+"""
