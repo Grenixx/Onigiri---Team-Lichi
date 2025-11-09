@@ -127,6 +127,9 @@ class GameServer:
                 print(f"Nouveau joueur {pid} ({addr})")
             return
 
+        # -- ping --
+        if msg_type == 9:  # 9 = ping
+            self.sock.sendto(b'\x09' + data[1:9], addr)
 
         # --- Déconnexion ---
         if msg_type == 1:

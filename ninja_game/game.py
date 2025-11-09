@@ -107,7 +107,6 @@ class Game:
         self.font = pygame.font.SysFont("consolas", 16)
         self.debug = True
 
-        
     def load_level(self, map_id):
         self.tilemap.load('data/maps/' + str(map_id) + '.json')
         
@@ -386,9 +385,11 @@ class Game:
                 fps_text = self.font.render(f"FPS: {fps}", True, fps_color)
                 self.screen.blit(fps_text, (10, 10))
 
-            #ping = getattr(self.net, "ping", 0)
-            #ping_text = self.font.render(f"Ping: {ping} ms", True, (200, 200, 200))
-            #self.screen.blit(ping_text, (10, 30))
+                ping = int(self.net.ping)
+                ping_color = (0, 255, 0) if ping < 80 else (255, 255, 0) if ping < 150 else (255, 0, 0)
+                ping_text = self.font.render(f"Ping: {ping} ms", True, ping_color)
+                self.screen.blit(ping_text, (10, 30))
+
 
             pygame.display.update()
             self.clock.tick(60)
