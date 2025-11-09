@@ -98,8 +98,9 @@ class Game:
 
         self.weapon_type = 'lance' # On commence avec la lance
 
+        self.font = pygame.font.SysFont("consolas", 16)
+        self.debug = True
 
-        
     def load_level(self, map_id):
         self.tilemap.load('data/maps/' + str(map_id) + '.json')
         
@@ -250,6 +251,7 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_F1:
                         self.player.weapon.weapon_equiped.toggle_debug()
+                        self.debug = not self.debug
                     # Mouvement horizontal
                     if event.key == pygame.K_LEFT or event.key == pygame.K_q:
                         self.movement[0] = True
@@ -369,6 +371,17 @@ class Game:
                 pygame.transform.scale(self.display_2, self.screen.get_size()),
                 screenshake_offset
             )
+
+            # --- AFFICHAGE DES FPS ---
+            if self.debug:
+                fps = int(self.clock.get_fps())
+                fps_color = (0, 255, 0) if fps >= 55 else (255, 255, 0) if fps >= 30 else (255, 0, 0)
+                fps_text = self.font.render(f"FPS: {fps}", True, fps_color)
+                self.screen.blit(fps_text, (10, 10))
+
+            #ping = getattr(self.net, "ping", 0)
+            #ping_text = self.font.render(f"Ping: {ping} ms", True, (200, 200, 200))
+            #self.screen.blit(ping_text, (10, 30))
 
             pygame.display.update()
             self.clock.tick(60)
