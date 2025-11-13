@@ -145,8 +145,8 @@ def toggle_dummy_setting():
 
 
 main_menu = Menu("Main Menu", [("Play", start_game),("Options", open_options),("test", test),("Quit", quit_game),], font)
-options_menu = Menu("Options", [("Sound: On", toggle_dummy_setting),("Back", lambda: set_active_menu(main_menu)),], font)
-test_menu = Menu("test",[("bouton magique Yayyyyyyyy",None),], font)
+options_menu = Menu("Options", [("Sound: On", toggle_dummy_setting),("Back", lambda: set_active_menu(main_menu)),("Keyboards",lambda: set_active_menu(keyboard_menu))], font)
+keyboard_menu = Menu("Keyboard", [("Jump",None),("Attack",None),("Dodge",None),("left",None),("Right",None)],font)
 
 
 def set_active_menu(menu):
