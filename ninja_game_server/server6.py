@@ -6,6 +6,8 @@ import miniupnpc
 from TilemapServer import TilemapServer
 from enemy_manager import EnemyManager
 
+
+
 # Message types:
 #  10 : Connexion
 #   1 : Déconnexion
@@ -20,6 +22,7 @@ class PlayerManager:
         self.clients = {}   # addr -> id
         self.players = {}   # id -> (x, y, action:str, flip:bool)
         self.next_id = 1
+        
 
     def add_player(self, addr):
         pid = self.next_id
@@ -57,12 +60,14 @@ class PlayerManager:
 # --- Game Server ---
 # ==============================
 class GameServer:
-    def __init__(self, ip="0.0.0.0", port=5006, rate=1/30):
+    def __init__(self,  local : bool = False, ip="0.0.0.0", port=5006, rate=1/30):
         self.ip = ip
         self.port = port
         self.rate = rate
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((ip, port))
+
+
 
         # --- Charger la map ---
         self.map = TilemapServer()
@@ -75,7 +80,8 @@ class GameServer:
         self.last_update = time.time()
 
         print(f"Serveur en ligne sur {ip}:{port}")
-        self.init_upnp()
+        if not local:
+            self.init_upnp()
 
     def init_upnp(self):
         upnp = miniupnpc.UPnP()
@@ -182,5 +188,5 @@ class GameServer:
 # --- Lancement ---
 # ==============================
 if __name__ == "__main__":
-    server = GameServer()
+    server = GameServer(True) #mode local == true
     server.run()
