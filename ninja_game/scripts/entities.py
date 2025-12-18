@@ -80,7 +80,7 @@ class PhysicsEntity:
                    self.pos[1] - offset[1] + self.anim_offset[1]))
 
 class InterpolatedEntity:
-    def __init__(self, initial_pos, speed=0.15):
+    def __init__(self, initial_pos, speed=0.6):
         self.current_pos = list(initial_pos)  # position affichée
         self.target_pos = list(initial_pos)   # position envoyée par le serveur
         self.speed = speed                    # vitesse de rattrapage (0.1~0.25)
@@ -324,57 +324,61 @@ class PurpleCircle:
     def __init__(self, game):
         self.game = game
         self.radius = 8  # rayon du cercle pour les collisions
+        self.enemies_interp = {}  # eid -> InterpolatedEntity
+
+    def interpolate_pos(self):
+        """Met à jour les positions cibles pour interpolation."""
+        for eid, (x, y) in self.game.net.enemies.items():
+            if eid not in self.enemies_interp:
+                self.enemies_interp[eid] = InterpolatedEntity((x, y))
+            else:
+                self.enemies_interp[eid].set_target((x, y))
 
     def update(self):
-        """
-        Vérifie les collisions entre le joueur et les ennemis.
-        Si le joueur est en dash et touche un ennemi, on le supprime.
-        """
+        """interpole"""
+        self.interpolate_pos()
+        """Vérifie les collisions et supprime les ennemis touchés."""
         player = self.game.player
         player_center = player.rect().center
         is_dashing = abs(self.game.player.dashing) > 50
         is_attacking = player.weapon.weapon_equiped.attack_timer > 0
-        
-        # Si aucune action offensive n'est en cours, on ne fait rien.
+
         if not is_dashing and not is_attacking:
             return
-            
+
         to_remove = []
         weapon_rect = player.weapon.weapon_equiped.rect()
 
-        
-        for eid, (ex, ey) in list(self.game.net.enemies.items()):
-            enemy_rect = pygame.Rect(ex - self.radius, ey - self.radius, self.radius * 2, self.radius * 2)
-            
-            # Condition 1: Le joueur en dash touche l'ennemi
+        for eid, interp in self.enemies_interp.items():
+            x, y = interp.target_pos  # pour la collision, on prend la cible serveur
+            enemy_rect = pygame.Rect(x - self.radius, y - self.radius, self.radius*2, self.radius*2)
+
+            # Condition 1: dash
             hit_by_dash = False
             if is_dashing:
-                dx, dy = ex - player_center[0], ey - player_center[1]
-                if (dx*dx + dy*dy) < (self.radius + 10)**2: # Plus rapide que sqrt
+                dx, dy = x - player_center[0], y - player_center[1]
+                if dx*dx + dy*dy < (self.radius + 10)**2:
                     hit_by_dash = True
-            
-            # Condition 2: L'arme en mouvement touche l'ennemi
+
+            # Condition 2: arme
             hit_by_weapon = is_attacking and weapon_rect.colliderect(enemy_rect)
 
             if hit_by_dash or hit_by_weapon:
                 to_remove.append(eid)
 
-        
-            
-
+        # Supprime localement et côté serveur
         for eid in to_remove:
-            # Supprime localement pour effet instantané
             if eid in self.game.net.enemies:
                 del self.game.net.enemies[eid]
-            # Envoie la suppression au serveur
+            if eid in self.enemies_interp:
+                del self.enemies_interp[eid]
             self.game.net.remove_enemy(eid)
-        
 
     def render(self, surf, offset=(0, 0)):
-        """Affiche les ennemis ronds violets à l’écran."""
-        for eid, (x, y) in self.game.net.enemies.items():
+        """Affiche les ennemis à l'écran en utilisant l'interpolation."""
+        for interp in self.enemies_interp.values():
+            x, y = interp.update()
             screen_x = x - offset[0]
             screen_y = y - offset[1]
             pygame.draw.circle(surf, (128, 0, 128), (int(screen_x), int(screen_y)), self.radius)
             self.game.tilemap.grass_manager.apply_force((x, y), 6, 12)
-            
