@@ -4,7 +4,7 @@ from math import *
 from TilemapServer import PHYSICS_TILES
 
 class EnemyManager:
-    def __init__(self, tilemap, num_enemies=20, speed=1.5):
+    def __init__(self, tilemap, num_enemies=200, speed=1.5):
         self.tilemap = tilemap
         self.enemies = {}
         self.next_enemy_id = 1
@@ -30,7 +30,7 @@ class EnemyManager:
             return
 
         def can_see_player(enemy, pid):
-            return not RayCast([enemy['x'], enemy['y']], angle(vector_to([enemy['x'], enemy['y']], players[pid])), self.tilemap, distane_to([enemy['x'], enemy['y']], players[pid]) - 10, 4, PHYSICS_TILES).collide
+            return not raycast_collide([enemy['x'], enemy['y']], angle(vector_to([enemy['x'], enemy['y']], players[pid])), self.tilemap, distane_to([enemy['x'], enemy['y']], players[pid]) - 10, 4, PHYSICS_TILES)
         
         enemies = list_copy(self.enemies.items()) #dict can change size when running for loop
         for eid, enemy in enemies:
@@ -84,10 +84,11 @@ class EnemyManager:
                 
                 # test
                 if random.randint(0, 500) == 0:
-                    ray_mult = RayCast(pos, angle(vector_to(pos, players[pid])), self.tilemap, distane_to(pos, players[pid]) - 10, 4, PHYSICS_TILES)
-                    ray_mult.determine_hit_position(10, True)
-                    print(ray_mult.hit_side)
-                    self.create_blob(ray_mult.hit_pos)
+                    new_blob_pos = raycast_pos(pos, angle(vector_to(pos, players[pid])), self.tilemap, distane_to(pos, players[pid]) - 10, 4, 10, PHYSICS_TILES, True)
+                    if new_blob_pos != None:
+                        self.create_blob(new_blob_pos)
+                    else:
+                        print("raycast_pos failed")
 
 def list_copy(lst):
     """
@@ -159,6 +160,23 @@ def is_within(pos, pos1, pos2):
     pos_r2 = [pos1[i] >= pos[i] and pos2[i] <= pos[i] for i in range(2)]
     return (pos_r1[0] and pos_r1[1]) or (pos_r2[0] and pos_r2[1])
 
+def raycast_collide(pos: list, angle: float, tilemap, dist_max: float = 1000, dist_check: float = 4, mask: list = [], return_pos: bool = False):
+    """
+    
+    """
+    vec = vec_from_angle(dist_check, angle)
+    dist = 0
+    pos_check = pos
+    while dist <= dist_max:
+        check_type = tilemap.check_type((pos_check))
+        if (mask == [] and check_type != None) or (check_type in mask):
+            if return_pos:
+                return pos_check
+            return True
+        pos_check = add_vecs(pos_check, vec)
+        dist += dist_check
+    return False
+
 def is_round(num):
     return round(num) == num
 
@@ -168,66 +186,37 @@ def is_almost_round(num, margin):
 def round_pos_if_possible(pos, margin):
     return [round(i) if is_almost_round(i, margin) else i for i in pos]
 
-class RayCast:
-    def __init__(self, pos: list, angle: float, tilemap, dist_max: float = 1000, dist_check: float = 4, mask: list = []):
-        self.pos = pos
-        self.angle = angle
-        self.tilemap = tilemap
-        self.dist_max = dist_max
-        self.dist_check = dist_check
-        self.mask = mask
-        self.hit_side = [0,0]
-        self.hit_pos = None
-
-        self.vec = vec_from_angle(dist_check, angle)
-        dist = 0
-        pos_check = pos
-        while dist <= dist_max:
-            check_type = tilemap.check_type((pos_check))
-            if (mask == [] and check_type != None) or (check_type in mask):
-                self.rough_hit_pos = pos_check
-                self.collide = True
-                break
-            pos_check = add_vecs(pos_check, self.vec)
-            dist += dist_check
-        self.collide = False
+def raycast_pos(pos: list, angle: float, tilemap, dist_max: float = 1000, dist_check: float = 4, precision : int = 4, mask: list = [], fix_collisions: bool = False):
+    """
     
-    def determine_hit_position(self, precision : int = 10, fix_collisions: bool = False):
-        if not self.collide:
-            return self
-        vec = self.vec
-        pos_check = self.rough_hit_pos
-        
-        for _ in range(precision):
-            vec = [i / 2 for i in vec]
-            check_type = self.tilemap.check_type((pos_check))
-            if (self.mask == [] and check_type != None) or (check_type in self.mask):
-                pos_check = sub_vecs(pos_check, vec)
-            else:
-                pos_check = add_vecs(pos_check, vec)
-        
-        # Ajustements
-        if precision >= 10:
-            pos_check = round_pos_if_possible(pos_check, self.dist_check * 2**-(precision - 1))
-            if is_round(pos_check[0]) and self.angle >= -pi/2 and self.angle <= pi/2: # collide left side of tile
-                if fix_collisions:
-                    pos_check[0] -= 0.0000000000001
-                self.hit_side[0] = 1
-            elif is_round(pos_check[0]) and self.angle < -pi/2 or self.angle > pi/2: # collide right side of tile
-                self.hit_side[0] = -1
-            if is_round(pos_check[1]) and self.angle >= 0: # collide up side of tile
-                if fix_collisions:
-                    pos_check[1] -= 0.0000000000001
-                self.hit_side[1] = 1
-            elif is_round(pos_check[1]) and self.angle < 0: # collide up side of tile
-                self.hit_side[1] = -1
-        
-        self.hit_pos = pos_check
-        return self
+    """
+    vec = vec_from_angle(dist_check, angle)
+    dist = 0
+    pos_check = raycast_collide(pos, angle, tilemap, dist_max, dist_check, mask, True)
+    if not pos_check:
+        return None
+    
+    for _ in range(precision):
+        vec = [i / 2 for i in vec]
+        check_type = tilemap.check_type((pos_check))
+        if (mask == [] and check_type != None) or (check_type in mask):
+            pos_check = sub_vecs(pos_check, vec)
+        else:
+            pos_check = add_vecs(pos_check, vec)
+    
+    # Ajustements
+    if precision >= 10:
+        pos_check = round_pos_if_possible(pos_check, dist_check * 2**-(precision - 1))
+        if fix_collisions:
+            if is_round(pos_check[0]) and angle >= -pi/2 and angle <= pi/2: # collide left side of tile
+                pos_check[0] -= 0.0000000000001
+            if is_round(pos_check[1]) and angle >= 0 and angle <= pi: # collide up side of tile
+                pos_check[1] -= 0.0000000000001
+
+    return pos_check
 
 """ todo:
 create class for raycast and vectors
 add documentation
 add side of block raycast hit in class
-change distance_to to norm()
 """
