@@ -178,60 +178,77 @@ class Sword(WeaponBase):
 class Mace(WeaponBase):
     def __init__(self, owner):
         super().__init__(owner)
-        
         original_animation = owner.game.assets['mace'].copy()
         scaled_images = [
             pygame.transform.scale(img, (img.get_width() // 6, img.get_height() // 6))
             for img in original_animation.images
         ]
         self.animation = original_animation.__class__(
-            scaled_images, original_animation.img_duration, original_animation.loop
+            scaled_images,
+            original_animation.img_duration,
+            original_animation.loop
         )
 
-        # distance de décalage fixe
-        self.offset_amount = 12  
+        self.offset_amount = 14  # distance fixe du joueur
 
+    # --- IMAGE + ROTATION + FLIP ---
     def get_image(self):
         img = self.animation.img()
 
-        if self.owner.flip:
+        # angle selon direction
+        if self.attack_direction == "up":
+            angle = 90
+        elif self.attack_direction == "down":
+            angle = -90
+        else:  # gauche/droite ou front
+            angle = 0
+
+        img = pygame.transform.rotate(img, angle)
+
+        # flip horizontal si attaque vers la gauche
+        if self.attack_direction == "left":
             img = pygame.transform.flip(img, True, False)
+        elif self.attack_direction == "front":
+            if self.owner.flip:
+                img = pygame.transform.flip(img, True, False)
 
-        return pygame.transform.rotate(img, self.angle)
+        return img
 
-
+    # --- UPDATE ---
     def update(self):
         super().update()
         if self.attack_timer > 0:
             self.animation.update()
 
+    # --- SWING ---
     def swing(self, direction):
-        super().swing(direction)
-        # durée basée sur animation
-        self.attack_timer = len(self.animation.images) * self.animation.img_duration
-        self.animation.frame = 0
+        # si aucune direction, prendre flip
+        if direction is None or direction == "front":
+            direction = "left" if self.owner.flip else "right"
 
+        self.attack_direction = direction
+        super().swing(direction)
+
+        # reset animation
+        self.animation.frame = 0
+        self.attack_timer = len(self.animation.images) * self.animation.img_duration
+
+    # --- POSITION ---
     def get_render_pos(self, offset=(0, 0)):
-        # Position centrale générique
         base_x, base_y = super().get_render_pos(offset)
 
-        # Offset statique selon direction
-        if self.attack_direction == "up":
+        # offset selon direction
+        if self.attack_direction in ["right", "front"]:
+            base_x += self.offset_amount
+        elif self.attack_direction == "left":
+            base_x -= self.offset_amount
+        elif self.attack_direction == "up":
             base_y -= self.offset_amount
-            self.angle = 0
-
         elif self.attack_direction == "down":
             base_y += self.offset_amount
-            self.angle = 0
-
-        else:  # left / right
-            if self.owner.flip:
-                base_x -= self.offset_amount
-                self.angle = 0
-            else:
-                base_x += self.offset_amount
-                self.angle = 0
 
         return (base_x, base_y)
+
+
     
         
