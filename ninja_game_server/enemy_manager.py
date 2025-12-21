@@ -12,9 +12,9 @@ class EnemyManager:
         for _ in range(num_enemies):
             self.create_enemy([random.randint(100,250), random.randint(40,100)], "blob")
 
-    def create_enemy(self, pos: list, type: str):
+    def create_enemy(self, pos: list, enemy_type: str):
         enemy_types = {"blob": Blob}
-        self.enemies[self.next_enemy_id] = enemy_types[type](self.next_enemy_id, pos)
+        self.enemies[self.next_enemy_id] = enemy_types[enemy_type](self.next_enemy_id, pos, self)
         self.next_enemy_id += 1
 
     def update(self, players):
@@ -27,7 +27,7 @@ class EnemyManager:
             enemy.physics_process(0.0, self.tilemap)
 
 class Enemy:
-    def __init__(self, eid, pos):
+    def __init__(self, eid, pos, enemy_manager):
         self.eid = eid
         self.properties = {
             'x': pos[0],
@@ -36,19 +36,22 @@ class Enemy:
             'vy': 0.0,
             'target_player': None,
         }
+        self.enemy_manager = enemy_manager
         print(f"ennemi créé en {pos} !")
-    def can_see_player(self, pid, players, tilemap):
+    def can_see_player(self, player, tilemap):
         return not raycast_collide([self.properties['x'], self.properties['y']], 
-                                    angle(vector_to([self.properties['x'], self.properties['y']], players[pid])),
+                                    angle(vector_to([self.properties['x'], self.properties['y']], player)),
                                     tilemap,
-                                    distane_to([self.properties['x'], self.properties['y']], players[pid]) - 10,
+                                    distane_to([self.properties['x'], self.properties['y']], player) - 10,
                                     4,
                                     PHYSICS_TILES
                                     )
+    def create_enemy(self, pos: list, enemy_type: str):
+        self.enemy_manager.create_enemy(pos, enemy_type)
 
 class Blob(Enemy):
-    def __init__(self, eid, pos):
-        super().__init__(eid, pos)
+    def __init__(self, eid, pos, enemy_manager):
+        super().__init__(eid, pos, enemy_manager)
     
     def physics_process(self, delta: float, players: list, ):
         pos = [self.properties['x'], self.properties['y']]
@@ -68,7 +71,7 @@ class Blob(Enemy):
             if closest_dist == None or closest_dist > dist:
                 closest_dist,closest_pid = dist,pid
 
-        if self.can_see_player(self.properties, closest_pid):
+        if distane_to(pos, players[closest_pid]) < 16*30 and self.can_see_player(self.properties, players[closest_pid]):
             self.properties['target_player'] = closest_pid
             step = [0,0]
             dist = distane_to(pos, players[closest_pid])
@@ -104,7 +107,7 @@ class Blob(Enemy):
             if random.randint(0, 500) == 0:
                 new_blob_pos = raycast_pos(pos, angle(vector_to(pos, players[pid])), self.tilemap, distane_to(pos, players[pid]) - 10, 4, 10, PHYSICS_TILES, True)
                 if new_blob_pos != None:
-                    self.create_blob(new_blob_pos)
+                    EnemyManager.create_enemy(new_blob_pos, "blob")
                 else:
                     print("raycast_pos failed")
         self.properties['x'] = pos[0]
