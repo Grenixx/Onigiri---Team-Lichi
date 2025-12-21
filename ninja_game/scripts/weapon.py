@@ -141,13 +141,58 @@ class Lance(WeaponBase):
 class Mace(WeaponBase):
     def __init__(self, owner):
         super().__init__(owner)
-        original_animation = owner.game.assets['mace'].copy()
-        scaled_images = [
-            pygame.transform.scale(img, (img.get_width() , img.get_height() ))
-            for img in original_animation.images
-        ]
-        self.animation = original_animation.__class__(
-            scaled_images, original_animation.img_duration, original_animation.loop
+        original_animation = owner.game.assets['mace'].copy()                          # recuperation des images de l'arme depuis le game.py
+        scaled_images = [                                                              # recuperation et redimensionnement des images de l'animation
+            pygame.transform.scale(img, (img.get_width()//4, img.get_height()//4 ))    #
+            for img in original_animation.images                                       #
+        ]                                                                              #
+        self.animation = original_animation.__class__(                                 # creation de l'animation avec les images redimensionnées
+            scaled_images, original_animation.img_duration, original_animation.loop    #
+        )                                                                              #
+
+
+    def update(self):                                                                  # controle de l'animation de l'arme (update les frames)
+        super().update()                                                               # en fonction de attack timer
+        if self.attack_timer > 0:                                                      #
+            self.animation.update()                                                    #
+
+
+    def get_render_pos(self, offset):                                                   # position intiale de l'arme
+        center_x = self.owner.rect().centerx - offset[0]                                # postition en fonction du x du jeoueur (owner)
+        center_y = self.owner.rect().centery - offset[1]                                # position en fonction du y du joueur (owner)   
+        image = self.animation.img()                                                    # recuperation de l'image actuelle de l'animation
+        pos_y = center_y - image.get_height() // 2 - 10                                 # position y de l'arme (au dessus du joueur)
+        pos_x = center_x - image.get_width() if self.owner.flip else center_x           # position x de l'arme + flip si le joueur regarde a gauche
+        return (pos_x, pos_y)                                                           # 
+
+    def rect(self):                                                                     # hitbox de l'arme  
+        pos = self.get_render_pos((0, 0))                                               # position de l'arme sans offset    
+        image = self.animation.img()                                                    # recuperation de l'image actuelle de l'animation   
+        return pygame.Rect(pos[0], pos[1], image.get_width(), image.get_height())       #
+
+    def render(self, surf, offset=(0, 0)):                                              # rendu de l'arme
+        if self.attack_timer > 0:                                                       # si l'arme est en train d'attaquer 
+            image = self.animation.img()                                                # recuperation de l'image actuelle de l'animation        
+            image = pygame.transform.flip(image, self.owner.flip, False)                # flip de l'image si le joueur regarde a gauche
+            pos = self.get_render_pos(offset)                                           # position de l'arme avec offset
+            surf.blit(image, pos)                                                       # affichage de l'arme
+            self.render_debug_hitbox(surf, self.rect(), offset)                         # affichage de la hitbox en mode debug
+
+    def swing(self, direction):                                                         # animation de l'arme (ici tourne)
+        super().swing(direction)                                                        # appel de la methode swing de la classe parente
+        self.attack_timer = self.animation.img_duration * len(self.animation.images)    # duree de l'attaque en fonction de l'animation
+        self.animation.frame = 0                                                        # reset de l'animation
+
+class Katana(WeaponBase):
+    def __init__(self, owner):
+        super().__init__(owner)
+        original_animation = owner.game.assets['katana'].copy()                          # recuperation des images de l'arme depuis le game.py
+        scaled_images = [                                                              # recuperation et redimensionnement des images de l'animation
+            pygame.transform.scale(img, (img.get_width()//4, img.get_height()//4 ))    #
+            for img in original_animation.images                                       #
+        ]                                                                              #
+        self.animation = original_animation.__class__(                                 # creation de l'animation avec les images redimensionnées
+            scaled_images, original_animation.img_duration, original_animation.loop    #
         )
 
     def update(self):
@@ -155,33 +200,33 @@ class Mace(WeaponBase):
         if self.attack_timer > 0:
             self.animation.update()
 
-    def get_render_pos(self, offset):
-        center_x = self.owner.rect().centerx - offset[0]
-        center_y = self.owner.rect().centery - offset[1]
-        image = self.animation.img()
-        pos_y = center_y - image.get_height() // 2 - 10
-        pos_x = center_x - image.get_width() if self.owner.flip else center_x
-        return (pos_x, pos_y)
+    def get_render_pos(self, offset):                                                   # position intiale de l'arme
+        center_x = self.owner.rect().centerx - offset[0]                                # postition en fonction du x du jeoueur (owner)
+        center_y = self.owner.rect().centery - offset[1]                                # position en fonction du y du joueur (owner)   
+        image = self.animation.img()                                                    # recuperation de l'image actuelle de l'animation
+        pos_y = center_y - image.get_height() // 2 - 10                                 # position y de l'arme (au dessus du joueur)
+        pos_x = center_x - image.get_width() if self.owner.flip else center_x           # position x de l'arme + flip si le joueur regarde a gauche
+        return (pos_x, pos_y)                                                           # 
 
-    def rect(self):
-        pos = self.get_render_pos((0, 0))
-        image = self.animation.img()
-        return pygame.Rect(pos[0], pos[1], image.get_width(), image.get_height())
+    def rect(self):                                                                     # hitbox de l'arme  
+        pos = self.get_render_pos((0, 0))                                               # position de l'arme sans offset    
+        image = self.animation.img()                                                    # recuperation de l'image actuelle de l'animation   
+        return pygame.Rect(pos[0], pos[1], image.get_width(), image.get_height())       #
 
-    def render(self, surf, offset=(0, 0)):
-        if self.attack_timer > 0:
-            image = self.animation.img()
-            image = pygame.transform.flip(image, self.owner.flip, False)
-            pos = self.get_render_pos(offset)
-            surf.blit(image, pos)
-            self.render_debug_hitbox(surf, self.rect(), offset)
+    def render(self, surf, offset=(0, 0)):                                              # rendu de l'arme
+        if self.attack_timer > 0:                                                       # si l'arme est en train d'attaquer 
+            image = self.animation.img()                                                # recuperation de l'image actuelle de l'animation        
+            image = pygame.transform.flip(image, self.owner.flip, False)                # flip de l'image si le joueur regarde a gauche
+            pos = self.get_render_pos(offset)                                           # position de l'arme avec offset
+            surf.blit(image, pos)                                                       # affichage de l'arme
+            self.render_debug_hitbox(surf, self.rect(), offset)                         # affichage de la hitbox en mode debug
 
-    def swing(self, direction):
-        super().swing(direction)
-        self.attack_timer = self.animation.img_duration * len(self.animation.images)
-        self.animation.frame = 0
+    def swing(self, direction):                                                         # animation de l'arme (ici tourne)
+        super().swing(direction)                                                        # appel de la methode swing de la classe parente
+        self.attack_timer = self.animation.img_duration * len(self.animation.images)    # duree de l'attaque en fonction de l'animation
+        self.animation.frame = 0                                                        # reset de l'animation
 
-
+    
 # --- Classe Sword avec slash rotatif et flip uniquement horizontal ---
 class Sword(WeaponBase):
     def __init__(self, owner):

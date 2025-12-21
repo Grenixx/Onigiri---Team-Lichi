@@ -76,6 +76,7 @@ class Game:
             'lance': load_image(resource_path('data/images/entities/weapon/lance.png')),
             'sword': load_image(resource_path('data/images/entities/weapon/sword.png')),
             'mace': Animation(load_images(resource_path('data/images/entities/weapon/mace1')), img_dur=5, loop=False),
+            'katana': Animation(load_images(resource_path('data/images/entities/weapon/katana')), img_dur=5, loop=False),
         }
 
         self.sfx = {
@@ -119,7 +120,7 @@ class Game:
         self.lighting = LightingSystem(self.display.get_size())
 
         self.weapon_type = 'lance' # On commence avec la lance
-        self.weaponDictionary = {1: 'lance', 2: 'mace', 3: 'sword'}
+        self.weaponDictionary = {1: 'lance', 2: 'mace', 3: 'sword', 4: 'katana'}
         self.currentWeaponIndex = 1
 
         self.font = pygame.font.SysFont("consolas", 16)
