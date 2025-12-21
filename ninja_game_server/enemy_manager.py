@@ -229,4 +229,5 @@ class RayCast:
 create class for raycast and vectors
 add documentation
 add side of block raycast hit in class
+change distance_to to norm()
 """

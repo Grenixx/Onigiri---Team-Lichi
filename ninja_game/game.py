@@ -4,6 +4,7 @@ import math
 import random
 
 import pygame
+from screeninfo import get_monitors
 
 from scripts.utils import load_image, load_images, Animation
 from scripts.entities import PhysicsEntity, Player, PurpleCircle, RemotePlayerRenderer
@@ -14,8 +15,8 @@ from scripts.particle import Particle
 from scripts.spark import Spark
 
 from scripts.shader_bg import ShaderBackground
-from client_network import ClientNetwork
-from controller import Controller  
+from scripts.client_network import ClientNetwork
+from scripts.controller import Controller  
 from scripts.lighting import LightingSystem
 
 class Game:
@@ -23,7 +24,12 @@ class Game:
         pygame.init()
 
         pygame.display.set_caption('ninja game')
-        self.screen = pygame.display.set_mode((640*3, 360*3))
+        monitors = get_monitors()
+        for m in monitors:
+            if m.is_primary:
+                monitor = m
+        print(f"Initialising game with width: {monitor.width} and height: {monitor.height}")
+        self.screen = pygame.display.set_mode((monitor.width, monitor.height))
         self.display = pygame.Surface((320, 180), pygame.SRCALPHA)
         self.display_2 = pygame.Surface((320, 180))
 
@@ -98,8 +104,9 @@ class Game:
 
         self.weapon_type = 'lance' # On commence avec la lance
 
+        self.font = pygame.font.SysFont("consolas", 16)
+        self.debug = True
 
-        
     def load_level(self, map_id):
         self.tilemap.load('data/maps/' + str(map_id) + '.json')
         
@@ -143,6 +150,10 @@ class Game:
             flip_byte = 1 if self.player.flip else 0
             self.net.send_state(self.player.pos[0], self.player.pos[1], action_id, flip_byte)
 
+            self.scroll[0] += (self.player.rect().centerx - self.display.get_width() / 2 - self.scroll[0])  # /30 smooth cam
+            self.scroll[1] += (self.player.rect().centery - self.display.get_height() / 2 - self.scroll[1]) # /30 smooth cam
+            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+
 
             # mettre à jour les autres joueurs
             #self.remote_players = self.net.players
@@ -152,7 +163,7 @@ class Game:
             shader_surface = self.shader_bg.render()
             self.display_2.blit(shader_surface, (0, 0))
             # scroll = position de la caméra dans ton jeu
-            shader_surface = self.shader_bg.render(camera=(self.scroll[0] * 0.2, self.scroll[1] * -0.2))
+            shader_surface = self.shader_bg.render(camera=(render_scroll[0] * 0.2, render_scroll[1] * -0.2))
             self.display_2.blit(shader_surface, (0, 0))
 
 
@@ -171,9 +182,7 @@ class Game:
                 if self.dead > 40:
                     self.load_level(self.level)
             
-            self.scroll[0] += (self.player.rect().centerx - self.display.get_width() / 2 - self.scroll[0]) / 30
-            self.scroll[1] += (self.player.rect().centery - self.display.get_height() / 2 - self.scroll[1]) / 30
-            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+            
             
             for rect in self.leaf_spawners:
                 if random.random() * 49999 < rect.width * rect.height:
@@ -248,6 +257,9 @@ class Game:
                     sys.exit()
                 # Si une touche est pressée
                 if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_F1:
+                        self.player.weapon.weapon_equiped.toggle_debug()
+                        self.debug = not self.debug
                     # Mouvement horizontal
                     if event.key == pygame.K_LEFT or event.key == pygame.K_q:
                         self.movement[0] = True
@@ -327,7 +339,7 @@ class Game:
             
             #self.tilemap.grass_manager.update_render(self.display,1/60, offset=self.scroll)
             #gd.grass_manager.update_render(display, 1 / 60, offset=gd.scroll.copy(), rot_function=lambda x, y: int(math.sin(x / 100 + global_time / 40) * 30) / 10)
-            self.tilemap.grass_manager.update_render(self.display, 1/10, offset=self.scroll, rot_function=lambda x, y: int(math.sin(x / 100 + pygame.time.get_ticks() / 300) * 30) / 10)
+            self.tilemap.grass_manager.update_render(self.display, 1/10, offset=render_scroll, rot_function=lambda x, y: int(math.sin(x / 100 + pygame.time.get_ticks() / 300) * 30) / 10)
 
             #self.tilemap.grass_manager.apply_force(self.player.pos, 12, 24)
             #positions = {}
@@ -349,7 +361,7 @@ class Game:
             # --- afficher les autres joueurs ---
             self.remote_players_renderer.render(self.display, offset=render_scroll)
             self.display_2.blit(self.display, (0, 0))
-
+            """
             # --- APPLICATION DE L’ÉCLAIRAGE APRÈS TOUT ---
             light_sources = [
                 (self.player.rect().centerx - render_scroll[0],
@@ -357,7 +369,7 @@ class Game:
                 300, (220, 240, 255))
             ]
             self.lighting.render(self.display_2, light_sources, pygame.time.get_ticks())
-
+            """
             # --- AFFICHAGE FINAL ---
             screenshake_offset = (
                 random.random() * self.screenshake - self.screenshake / 2,
@@ -367,6 +379,19 @@ class Game:
                 pygame.transform.scale(self.display_2, self.screen.get_size()),
                 screenshake_offset
             )
+
+            # --- AFFICHAGE DES FPS ---
+            if self.debug:
+                fps = int(self.clock.get_fps())
+                fps_color = (0, 255, 0) if fps >= 55 else (255, 255, 0) if fps >= 30 else (255, 0, 0)
+                fps_text = self.font.render(f"FPS: {fps}", True, fps_color)
+                self.screen.blit(fps_text, (10, 10))
+
+                ping = int(self.net.ping)
+                ping_color = (0, 255, 0) if ping < 80 else (255, 255, 0) if ping < 150 else (255, 0, 0)
+                ping_text = self.font.render(f"Ping: {ping} ms", True, ping_color)
+                self.screen.blit(ping_text, (10, 30))
+
 
             pygame.display.update()
             self.clock.tick(60)
