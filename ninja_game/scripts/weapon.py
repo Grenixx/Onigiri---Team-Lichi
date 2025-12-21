@@ -7,18 +7,17 @@ import random
 # ===============   GESTIONNAIRE D'ARME    ====================
 # ============================================================
 class Weapon:
-    def __init__(self, owner, weapon_type='lance'):
+    def __init__(self, owner, weapon_type='mace'):
         self.owner = owner
         self.weapon_type = weapon_type
         self.set_weapon(weapon_type)
 
     def set_weapon(self, weapon_type):
-        if weapon_type == 'lance':
-            self.weapon_equiped = Lance(self.owner)
-        elif weapon_type == 'mace':
+
+        if weapon_type == 'mace':
             self.weapon_equiped = Mace(self.owner)
-        elif weapon_type == 'sword':
-            self.weapon_equiped = Sword(self.owner)
+        #elif weapon_type == 'sword':
+        #    self.weapon_equiped = Sword(self.owner)
 
         self.weapon_type = weapon_type
         print(f"[DEBUG] Arme équipée : {self.weapon_type}")
@@ -111,67 +110,6 @@ class WeaponBase:
                 2
             )
 
-
-
-# ============================================================
-# ======================   LANCE   ============================
-# ============================================================
-class Lance(WeaponBase):
-    def __init__(self, owner):
-        super().__init__(owner, image=owner.game.assets['lance'])
-        self.attack_duration = 15
-        self.max_thrust = 16
-
-    def get_render_pos(self, offset):
-        pos_x, pos_y = super().get_render_pos(offset)
-
-        progress = (self.attack_duration - self.attack_timer) / self.attack_duration
-        thrust = progress * self.max_thrust
-
-        if self.attack_direction == "up":
-            pos_y -= thrust
-            self.angle = 90
-        elif self.attack_direction == "down":
-            pos_y += thrust
-            self.angle = -90
-        else:
-            self.angle = 180 if self.owner.flip else 0
-            pos_x += thrust if not self.owner.flip else -thrust
-
-        return (pos_x, pos_y)
-
-# ============================================================
-# ======================   EPEE   =============================
-# ============================================================
-class Sword(WeaponBase):
-    def __init__(self, owner):
-        super().__init__(owner, image=owner.game.assets['sword'])
-        self.start_angle = 0
-        self.end_angle = 0
-
-    def update(self):
-        super().update()
-        if self.attack_timer > 0:
-            p = (self.attack_duration - self.attack_timer) / self.attack_duration
-            self.angle = self.start_angle + (self.end_angle - self.start_angle) * p
-
-    def swing(self, direction):
-        super().swing(direction)
-
-        if direction == "left":
-            self.owner.flip = True
-            self.start_angle, self.end_angle = (180, 120)
-
-        elif direction == "right":
-            self.owner.flip = False
-            self.start_angle, self.end_angle = (0, -60)
-
-        elif direction == "up":
-            self.start_angle, self.end_angle = (-90, 0)
-
-        elif direction == "down":
-            self.start_angle, self.end_angle = (90, 0)
-
 # ============================================================
 # ======================   MASSE   ============================
 # ============================================================
@@ -180,7 +118,7 @@ class Mace(WeaponBase):
         super().__init__(owner)
         original_animation = owner.game.assets['mace'].copy()
         scaled_images = [
-            pygame.transform.scale(img, (img.get_width() // 6, img.get_height() // 6))
+            pygame.transform.scale(img, (img.get_width() // 8, img.get_height() // 8))
             for img in original_animation.images
         ]
         self.animation = original_animation.__class__(
@@ -200,17 +138,17 @@ class Mace(WeaponBase):
             angle = 90
         elif self.attack_direction == "down":
             angle = -90
-        else:  # left / right / front
+        else:  # gauche/droite ou front
             angle = 0
 
         img = pygame.transform.rotate(img, angle)
 
-        # flip horizontal si on attaque vers la gauche ou si front + flip
-        if self.attack_direction == "left" or (self.attack_direction == "front" and self.owner.flip):
+        # flip horizontal si attaque vers la gauche
+        if self.attack_direction == "left":
             img = pygame.transform.flip(img, True, False)
-        elif self.attack_direction in ["up", "down"] and self.owner.flip:
-            # on flip aussi pour up/down si joueur regarde à gauche
-            img = pygame.transform.flip(img, True, False)
+        elif self.attack_direction == "front":
+            if self.owner.flip:
+                img = pygame.transform.flip(img, True, False)
 
         return img
 
