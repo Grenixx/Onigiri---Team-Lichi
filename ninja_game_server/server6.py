@@ -76,7 +76,7 @@ class GameServer:
 
         # --- Managers ---
         self.players = PlayerManager()
-        self.enemies = EnemyManager(self.map)
+        self.EnemyManager = EnemyManager(self.map)
         self.last_update = time.time()
 
         print(f"Serveur en ligne sur {ip}:{port}")
@@ -142,9 +142,9 @@ class GameServer:
             pid = self.players.remove_player(addr)
             print(f"Déconnexion du joueur {pid}")
             # Supprime la cible si l’ennemi le suivait
-            for e in self.enemies.enemies.values():
-                if e['target_player'] == pid:
-                    e['target_player'] = None
+            for e in self.EnemyManager.enemies.values():
+                if e.properties['target_player'] == pid:
+                    e.properties['target_player'] = None
             return
 
         # --- Mise à jour joueur ---
@@ -154,15 +154,15 @@ class GameServer:
         # --- Suppression ennemi ---
         if msg_type == 3 and len(data) >= 5:
             eid = struct.unpack("I", data[1:5])[0]
-            if eid in self.enemies.enemies:
-                del self.enemies.enemies[eid]
+            if eid in self.EnemyManager.enemies:
+                del self.EnemyManager.enemies[eid]
             return
 
     # ---------------------------
     # --- Mises à jour ---
     # ---------------------------
     def update_world(self):
-        self.enemies.update(self.players.players)
+        self.EnemyManager.update(self.players.players)
         self.broadcast_state()
 
     # ---------------------------
@@ -176,8 +176,8 @@ class GameServer:
             flip_byte = b'\x01' if flip else b'\x00'
             payload += struct.pack("Iff", pid, x, y) + action_bytes + flip_byte
 
-        payload += struct.pack("B", len(self.enemies.enemies))
-        for eid, e in self.enemies.enemies.items():
+        payload += struct.pack("B", len(self.EnemyManager.enemies))
+        for eid, e in self.EnemyManager.enemies.items():
             payload += struct.pack("Iff", eid, e.properties['x'], e.properties['y'])
 
         for addr in self.players.clients:
