@@ -200,17 +200,17 @@ class Mace(WeaponBase):
             angle = 90
         elif self.attack_direction == "down":
             angle = -90
-        else:  # gauche/droite ou front
+        else:  # left / right / front
             angle = 0
 
         img = pygame.transform.rotate(img, angle)
 
-        # flip horizontal si attaque vers la gauche
-        if self.attack_direction == "left":
+        # flip horizontal si on attaque vers la gauche ou si front + flip
+        if self.attack_direction == "left" or (self.attack_direction == "front" and self.owner.flip):
             img = pygame.transform.flip(img, True, False)
-        elif self.attack_direction == "front":
-            if self.owner.flip:
-                img = pygame.transform.flip(img, True, False)
+        elif self.attack_direction in ["up", "down"] and self.owner.flip:
+            # on flip aussi pour up/down si joueur regarde à gauche
+            img = pygame.transform.flip(img, True, False)
 
         return img
 
