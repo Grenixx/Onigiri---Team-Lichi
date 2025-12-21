@@ -75,7 +75,7 @@ class Game:
             'projectile': load_image(resource_path('data/images/projectile.png')),
             'lance': load_image(resource_path('data/images/entities/weapon/lance.png')),
             'sword': load_image(resource_path('data/images/entities/weapon/sword.png')),
-            'mace': Animation(load_images(resource_path('data/images/entities/weapon/mace')), img_dur=5, loop=False),
+            'mace': Animation(load_images(resource_path('data/images/entities/weapon/mace1')), img_dur=5, loop=False),
         }
 
         self.sfx = {

@@ -143,7 +143,7 @@ class Mace(WeaponBase):
         super().__init__(owner)
         original_animation = owner.game.assets['mace'].copy()
         scaled_images = [
-            pygame.transform.scale(img, (img.get_width() // 4, img.get_height() // 4))
+            pygame.transform.scale(img, (img.get_width() , img.get_height() ))
             for img in original_animation.images
         ]
         self.animation = original_animation.__class__(
@@ -186,7 +186,7 @@ class Mace(WeaponBase):
 class Sword(WeaponBase):
     def __init__(self, owner):
         super().__init__(owner)
-        self.image = owner.game.assets['lance']  # image temporaire
+        self.image = owner.game.assets['sword']  # image temporaire
         self.attack_duration = 15
         self.start_angle = 0
         self.end_angle = 0
