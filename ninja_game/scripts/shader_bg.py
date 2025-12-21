@@ -3,6 +3,18 @@ import numpy as np
 import pygame
 import time
 
+import sys, os
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
+
+
 class ShaderBackground:
     def __init__(self, width, height, frag_shader_path):
         self.width = width
@@ -11,7 +23,7 @@ class ShaderBackground:
 
         self.ctx = moderngl.create_standalone_context()
 
-        with open(frag_shader_path, "r") as f:
+        with open(resource_path(frag_shader_path), "r") as f:
             frag_src = f.read()
 
         self.prog = self.ctx.program(

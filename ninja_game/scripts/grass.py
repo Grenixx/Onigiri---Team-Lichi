@@ -77,6 +77,16 @@ from copy import deepcopy
 
 import pygame
 
+
+import sys
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
 def normalize(val, amt, target):
     if val > target + amt:
         val -= amt
@@ -90,7 +100,8 @@ def normalize(val, amt, target):
 class GrassManager:
     def __init__(self, grass_path, tile_size=15, shade_amount=100, stiffness=360, max_unique=10, place_range=[1, 1], padding=13):
         # asset manager
-        self.ga = GrassAssets(grass_path, self)
+        self.grass_path = resource_path(grass_path)
+        self.ga = GrassAssets(self.grass_path, self)
 
         # caching variables
         self.grass_id = 0
@@ -179,8 +190,9 @@ class GrassAssets:
         self.blades = []
 
         # load in blade images
-        for blade in sorted(os.listdir(path)):
-            img = pygame.image.load(path + '/' + blade).convert()
+        for blade in sorted(os.listdir(resource_path(path))):
+            img_path = resource_path(os.path.join(path, blade))
+            img = pygame.image.load(img_path).convert()
             img.set_colorkey((0, 0, 0))
             self.blades.append(img)
 

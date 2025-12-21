@@ -1,18 +1,29 @@
 import os
-
 import pygame
+import sys
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 BASE_IMG_PATH = 'data/images/'
 
 def load_image(path):
-    img = pygame.image.load(BASE_IMG_PATH + path).convert()
+    """path doit être relatif à BASE_IMG_PATH"""
+    full_path = resource_path(os.path.join(BASE_IMG_PATH, path))
+    img = pygame.image.load(full_path).convert()
     img.set_colorkey((0, 0, 0))
     return img
 
 def load_images(path):
+    """path doit être relatif à BASE_IMG_PATH"""
+    folder_path = resource_path(os.path.join(BASE_IMG_PATH, path))
     images = []
-    for img_name in sorted(os.listdir(BASE_IMG_PATH + path)):
-        images.append(load_image(path + '/' + img_name))
+    for img_name in sorted(os.listdir(folder_path)):
+        images.append(load_image(os.path.join(path, img_name)))  # ne pas rajouter BASE_IMG_PATH ici !
     return images
 
 class Animation:

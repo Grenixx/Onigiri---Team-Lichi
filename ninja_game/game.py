@@ -19,6 +19,19 @@ from scripts.client_network import ClientNetwork
 from scripts.controller import Controller  
 from scripts.lighting import LightingSystem
 
+
+def resource_path(relative_path):
+    """Permet de trouver les fichiers quand le script est compilé en exe"""
+    import sys
+    import os
+    try:
+        # PyInstaller stocke les fichiers dans _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
 class Game:
     def __init__(self):
         pygame.init()
@@ -38,45 +51,48 @@ class Game:
         self.movement = [False, False]
         
         self.assets = {
-            'decor': load_images('tiles/decor'),
-            'grass': load_images('tiles/grass'),
-            'grassSpawner': load_images('grass'), #celui qui retire le commentaire je l encule 
-            'large_decor': load_images('tiles/large_decor'),
-            'stone': load_images('tiles/stone'),
-            'player': load_image('entities/player.png'),
-            'background': load_image('background.png'),
-            'clouds': load_images('clouds'),
-            'enemy/idle': Animation(load_images('entities/enemy/idle'), img_dur=6),
-            'enemy/run': Animation(load_images('entities/enemy/run'), img_dur=4),
-            'player/idle': Animation(load_images('entities/player/idle'), img_dur=6),
-            'player/run': Animation(load_images('entities/player/run'), img_dur=4),
-            'player/attack_front': Animation(load_images('entities/player/attack_front'), img_dur=20, loop=False),
-            'player/attack_up': Animation(load_images('entities/player/attack_up'), img_dur=20, loop=False),
-            'player/attack_down': Animation(load_images('entities/player/attack_down'), img_dur=20, loop=False),
-            'player/jump': Animation(load_images('entities/player/jump')),
-            'player/slide': Animation(load_images('entities/player/slide')),
-            'player/wall_slide': Animation(load_images('entities/player/wall_slide')),
-            'particle/leaf': Animation(load_images('particles/leaf'), img_dur=20, loop=False),
-            'particle/particle': Animation(load_images('particles/particle'), img_dur=6, loop=False),
-            'gun': load_image('gun.png'),
-            'projectile': load_image('projectile.png'),
-            'lance': load_image('entities/weapon/lance.png'),
-            'mace': Animation(load_images('entities/weapon/mace'), img_dur=5, loop=False),
+            'decor': load_images(resource_path('data/images/tiles/decor')),
+            'grass': load_images(resource_path('data/images/tiles/grass')),
+            'grassSpawner': load_images(resource_path('data/images/grass')),
+            'large_decor': load_images(resource_path('data/images/tiles/large_decor')),
+            'stone': load_images(resource_path('data/images/tiles/stone')),
+            'player': load_image(resource_path('data/images/entities/player.png')),
+            'background': load_image(resource_path('data/images/background.png')),
+            'clouds': load_images(resource_path('data/images/clouds')),
+            'enemy/idle': Animation(load_images(resource_path('data/images/entities/enemy/idle')), img_dur=6),
+            'enemy/run': Animation(load_images(resource_path('data/images/entities/enemy/run')), img_dur=4),
+            'player/idle': Animation(load_images(resource_path('data/images/entities/player/idle')), img_dur=6),
+            'player/run': Animation(load_images(resource_path('data/images/entities/player/run')), img_dur=4),
+            'player/attack_front': Animation(load_images(resource_path('data/images/entities/player/attack_front')), img_dur=20, loop=False),
+            'player/attack_up': Animation(load_images(resource_path('data/images/entities/player/attack_up')), img_dur=20, loop=False),
+            'player/attack_down': Animation(load_images(resource_path('data/images/entities/player/attack_down')), img_dur=20, loop=False),
+            'player/jump': Animation(load_images(resource_path('data/images/entities/player/jump'))),
+            'player/slide': Animation(load_images(resource_path('data/images/entities/player/slide'))),
+            'player/wall_slide': Animation(load_images(resource_path('data/images/entities/player/wall_slide'))),
+            'particle/leaf': Animation(load_images(resource_path('data/images/particles/leaf')), img_dur=20, loop=False),
+            'particle/particle': Animation(load_images(resource_path('data/images/particles/particle')), img_dur=6, loop=False),
+            'gun': load_image(resource_path('data/images/gun.png')),
+            'projectile': load_image(resource_path('data/images/projectile.png')),
+            'mace': Animation(load_images(resource_path('data/images/entities/weapon/mace')), img_dur=5, loop=False),
+            'mace1': Animation(load_images(resource_path('data/images/entities/weapon/mace1')), img_dur=5, loop=False),
+
         }
-        
+
         self.sfx = {
-            'jump': pygame.mixer.Sound('data/sfx/jump.wav'),
-            'dash': pygame.mixer.Sound('data/sfx/dash.wav'),
-            'hit': pygame.mixer.Sound('data/sfx/hit.wav'),
-            'shoot': pygame.mixer.Sound('data/sfx/shoot.wav'),
-            'ambience': pygame.mixer.Sound('data/sfx/ambience.wav'),
+            'jump': pygame.mixer.Sound(resource_path('data/sfx/jump.wav')),
+            'dash': pygame.mixer.Sound(resource_path('data/sfx/dash.wav')),
+            'hit': pygame.mixer.Sound(resource_path('data/sfx/hit.wav')),
+            'shoot': pygame.mixer.Sound(resource_path('data/sfx/shoot.wav')),
+            'ambience': pygame.mixer.Sound(resource_path('data/sfx/ambience.wav')),
         }
-        
+
+        # Ajuster les volumes
         self.sfx['ambience'].set_volume(0.01)
         self.sfx['shoot'].set_volume(0.01)
         self.sfx['hit'].set_volume(0.01)
         self.sfx['dash'].set_volume(0.01)
         self.sfx['jump'].set_volume(0.01)
+
         
         self.clouds = Clouds(self.assets['clouds'], count=5)
         
@@ -102,7 +118,9 @@ class Game:
 
         self.lighting = LightingSystem(self.display.get_size())
 
-        self.weapon_type = 'lance' # On commence avec la lance
+        self.weapon_type = 'mace' # On commence avec la lance
+        self.weaponDictionary = {1: 'mace', 2: 'mace1', 3: 'sword'}
+        self.currentWeaponIndex = 1
 
         self.font = pygame.font.SysFont("consolas", 16)
         self.debug = True
@@ -130,7 +148,7 @@ class Game:
 
         
     def run(self):
-        pygame.mixer.music.load('data/music.wav')
+        pygame.mixer.music.load(resource_path('data/music.wav'))
         pygame.mixer.music.set_volume(0.001)
         pygame.mixer.music.play(-1)
         
@@ -279,8 +297,9 @@ class Game:
                     if event.key == pygame.K_x or event.key == pygame.K_LSHIFT:
                         self.player.dash()
                     if event.key == pygame.K_c:
-                        self.weapon_type = 'mace' if self.weapon_type == 'lance' else 'lance'
-                        self.player.weapon = Weapon(self.player, self.weapon_type)
+                        self.currentWeaponIndex = (self.currentWeaponIndex % len(self.weaponDictionary)) + 1
+                        self.weapon_type = self.weaponDictionary[self.currentWeaponIndex]
+                        self.player.weapon.set_weapon(self.weapon_type)
                 # Si une touche est relâchée
                 if event.type == pygame.KEYUP or event.type == pygame.K_SPACE:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_q:

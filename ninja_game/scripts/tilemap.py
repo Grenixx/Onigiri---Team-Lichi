@@ -3,6 +3,16 @@ import random
 import pygame
 from scripts.grass import GrassManager   # 🌿 AJOUT — pour gérer l'herbe
 
+import sys, os
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
 AUTOTILE_MAP = {
     tuple(sorted([(1, 0), (0, 1)])): 0,
     tuple(sorted([(1, 0), (0, 1), (-1, 0)])): 1,
@@ -28,9 +38,13 @@ class Tilemap:
         self.offgrid_tiles = []
 
         # 🌿 AJOUT — gestionnaire d’herbe
-        self.grass_manager = GrassManager("data/images/grass", tile_size=self.tile_size, shade_amount=120, stiffness=300)
-        self.grass_manager.enable_ground_shadows(shadow_strength=60, shadow_radius=3, shadow_color=(0, 0, 1))
-
+        self.grass_manager = GrassManager(resource_path("data/images/grass"),
+                                        tile_size=self.tile_size,
+                                        shade_amount=120,
+                                        stiffness=300)
+        self.grass_manager.enable_ground_shadows(shadow_strength=60,
+                                                shadow_radius=3,
+                                                shadow_color=(0, 0, 1))
 
     def extract(self, id_pairs, keep=False):
         matches = []
@@ -70,7 +84,7 @@ class Tilemap:
         
         
     def load(self, path):
-        f = open(path, 'r')
+        f = open(resource_path(path), 'r')
         map_data = json.load(f)
         f.close()
         
