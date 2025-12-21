@@ -102,19 +102,23 @@ class WeaponBase:
 
         # angle selon direction
         if self.attack_direction == "up":
-            self.angle = 90
+            angle = 90
         elif self.attack_direction == "down":
-            self.angle = -90
-        else:  # gauche / droite / front
-            self.angle = 0
+            angle = -90
+        else:  # gauche/droite ou front
+            angle = 0
 
-        img = pygame.transform.rotate(img, self.angle)
+        img = pygame.transform.rotate(img, angle)
 
-        # flip horizontal si attaque vers la gauche
-        if self.attack_direction == "left" or (self.attack_direction == "front" and self.owner.flip):
+        # flip horizontal si attaque vers la gauche ou joueur regarde à gauche
+        if self.attack_direction == "left":
             img = pygame.transform.flip(img, True, False)
-        elif self.attack_direction in ["up", "down"] and self.owner.flip:
-            # flip aussi si regard vers la gauche
+        elif self.attack_direction == "front" and self.owner.flip:
+            img = pygame.transform.flip(img, True, False)
+        elif self.attack_direction == "up" and self.owner.flip:
+            img = pygame.transform.flip(img, True, False)
+
+        elif self.attack_direction == "down" and not self.owner.flip:
             img = pygame.transform.flip(img, True, False)
 
         return img
