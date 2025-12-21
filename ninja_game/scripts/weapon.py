@@ -178,17 +178,27 @@ class Sword(WeaponBase):
 class Mace(WeaponBase):
     def __init__(self, owner):
         super().__init__(owner)
+        
         original_animation = owner.game.assets['mace'].copy()
         scaled_images = [
-            pygame.transform.scale(img, (img.get_width() // 8, img.get_height() // 8))
+            pygame.transform.scale(img, (img.get_width() // 6, img.get_height() // 6))
             for img in original_animation.images
         ]
         self.animation = original_animation.__class__(
             scaled_images, original_animation.img_duration, original_animation.loop
         )
 
+        # distance de décalage fixe
+        self.offset_amount = 12  
+
     def get_image(self):
-        return self.animation.img()
+        img = self.animation.img()
+
+        if self.owner.flip:
+            img = pygame.transform.flip(img, True, False)
+
+        return pygame.transform.rotate(img, self.angle)
+
 
     def update(self):
         super().update()
@@ -197,5 +207,31 @@ class Mace(WeaponBase):
 
     def swing(self, direction):
         super().swing(direction)
+        # durée basée sur animation
         self.attack_timer = len(self.animation.images) * self.animation.img_duration
         self.animation.frame = 0
+
+    def get_render_pos(self, offset=(0, 0)):
+        # Position centrale générique
+        base_x, base_y = super().get_render_pos(offset)
+
+        # Offset statique selon direction
+        if self.attack_direction == "up":
+            base_y -= self.offset_amount
+            self.angle = 0
+
+        elif self.attack_direction == "down":
+            base_y += self.offset_amount
+            self.angle = 0
+
+        else:  # left / right
+            if self.owner.flip:
+                base_x -= self.offset_amount
+                self.angle = 0
+            else:
+                base_x += self.offset_amount
+                self.angle = 0
+
+        return (base_x, base_y)
+    
+        
