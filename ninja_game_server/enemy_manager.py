@@ -10,85 +10,107 @@ class EnemyManager:
         self.next_enemy_id = 1
         self.speed = speed
         for _ in range(num_enemies):
-            self.create_blob([random.randint(100,250), random.randint(40,100)])
+            self.create_enemy([random.randint(100,250), random.randint(40,100)], "blob")
 
-    def create_blob(self, pos: list):
-        eid = self.next_enemy_id
-        self.next_enemy_id += 1
-        self.enemies[eid] = {
+    def create_enemy(self, pos: list, type: str):
+        enemy_types = {"blob": Blob}
+        self.enemies[self.next_enemy_id] = enemy_types[type](self.next_enemy_id, pos)
+        self.next_enemy_id += 1;
+
+    def update(self, players):
+        """Met à jour tous les ennemis en fonction de la map et des joueurs"""
+        if not players:
+            return
+        
+        enemies = list_copy(self.enemies.items()) #dict can change size when running for loop
+        for eid, enemy in enemies:
+            enemy.physics_process(0.0, self.tilemap)
+
+class Enemy:
+    def __init__(self, eid, pos):
+        self.eid = eid
+        self.properties = {
             'x': pos[0],
             'y': pos[1],
             'vx': 0.0,
             'vy': 0.0,
             'target_player': None,
         }
-        print(f"ennemi créés en {pos} !")
+        print(f"ennemi créé en {pos} !")
+    def can_see_player(self, pid, players, tilemap):
+        return not raycast_collide([self.properties['x'], self.properties['y']], 
+                                    angle(vector_to([self.properties['x'], self.properties['y']], players[pid])),
+                                    tilemap,
+                                    distane_to([self.properties['x'], self.properties['y']], players[pid]) - 10,
+                                    4,
+                                    PHYSICS_TILES
+                                    )
 
-    def update(self, players):
-        """Met à jour tous les ennemis en fonction de la map et des joueurs"""
-        if not players:
-            return
+class Blob(Enemy):
+    def __init__(self, eid, pos):
+        super().__init__(eid, pos)
+    
+    def physics_process(self, delta: float, players: list, ):
+        pos = [self.properties['x'], self.properties['y']]
+        velocity = [self.properties['vx'], self.properties['vy']]
 
-        def can_see_player(enemy, pid):
-            return not raycast_collide([enemy['x'], enemy['y']], angle(vector_to([enemy['x'], enemy['y']], players[pid])), self.tilemap, distane_to([enemy['x'], enemy['y']], players[pid]) - 10, 4, PHYSICS_TILES)
-        
-        enemies = list_copy(self.enemies.items()) #dict can change size when running for loop
-        for eid, enemy in enemies:
-            pos = [enemy['x'], enemy['y']]
+        # --- Gravité ---
+        if not self.tilemap.solid_check((pos[0], pos[1] + 4)):
+            velocity[1] += 0  # tombe
+        else:
+            velocity[1] = 0
+
+        # --- Trouver la cible la plus proche ---
+        closest_dist = None
+        closest_pid = None
+        for pid in players.keys():
+            dist = distance_squared_to(pos, players[pid])
+            if closest_dist == None or closest_dist > dist:
+                closest_dist,closest_pid = dist,pid
+
+        if self.can_see_player(self.properties, closest_pid):
+            self.properties['target_player'] = closest_pid
+            step = [0,0]
+            dist = distane_to(pos, players[closest_pid])
+            if dist > 1:
+                step = normalized(vector_to(pos, players[closest_pid]))
+                step = [i * self.speed for i in step]
+
+            # --- Test collisions map ---
+            new_x = pos[0] + step[0]
+            new_y = pos[1] + step[1] + velocity[1]
+
+            if not self.tilemap.solid_check((new_x, pos[1])):
+                velocity[0] = step[0]
+            else:
+                velocity[0] = 0
+
+            if not self.tilemap.solid_check((pos[0], new_y)):
+                velocity[1] += step[1]
+            else:
+                velocity[1] = 0
+
+            # Limites de la map
+            pos[0] = max(0, min(pos[0] + velocity[0], 1000))
+            pos[1] = max(0, min(pos[1] + velocity[1], 1000))
+
+            velocity[1] = 0
+
+        else:
+            self.properties['target_player'] = None
+            velocity = [0,0]
             
-            # --- Gravité ---
-            if not self.tilemap.solid_check((pos[0], pos[1] + 4)):
-                enemy['vy'] += 0  # tombe
-            else:
-                enemy['vy'] = 0
-
-            # --- Trouver la cible la plus proche ---
-            closest_dist = None
-            closest_pid = None
-            for pid in players.keys():
-                dist = distance_squared_to(pos, players[pid])
-                if closest_dist == None or closest_dist > dist:
-                    closest_dist,closest_pid = dist,pid
-
-            if can_see_player(enemy, closest_pid):
-                enemy['target_player'] = closest_pid
-                step = [0,0]
-                dist = distane_to(pos, players[closest_pid])
-                if dist > 1:
-                    step = normalized(vector_to(pos, players[closest_pid]))
-                    step = [i * self.speed for i in step]
-
-                # --- Test collisions map ---
-                new_x = pos[0] + step[0]
-                new_y = pos[1] + step[1] + enemy['vy']
-
-                if not self.tilemap.solid_check((new_x, pos[1])):
-                    enemy['vx'] = step[0]
+            # test
+            if random.randint(0, 500) == 0:
+                new_blob_pos = raycast_pos(pos, angle(vector_to(pos, players[pid])), self.tilemap, distane_to(pos, players[pid]) - 10, 4, 10, PHYSICS_TILES, True)
+                if new_blob_pos != None:
+                    self.create_blob(new_blob_pos)
                 else:
-                    enemy['vx'] = 0
-
-                if not self.tilemap.solid_check((pos[0], new_y)):
-                    enemy['vy'] += step[1]
-                else:
-                    enemy['vy'] = 0
-
-                # Limites de la map
-                enemy['x'] = max(0, min(enemy['x'] + enemy['vx'], 1000))
-                enemy['y'] = max(0, min(enemy['y'] + enemy['vy'], 1000))
-
-                enemy['vy'] = 0
-
-            else:
-                enemy['target_player'] = None
-                enemy['vx'], enemy['vy'] = 0,0
-                
-                # test
-                if random.randint(0, 500) == 0:
-                    new_blob_pos = raycast_pos(pos, angle(vector_to(pos, players[pid])), self.tilemap, distane_to(pos, players[pid]) - 10, 4, 10, PHYSICS_TILES, True)
-                    if new_blob_pos != None:
-                        self.create_blob(new_blob_pos)
-                    else:
-                        print("raycast_pos failed")
+                    print("raycast_pos failed")
+        self.properties['x'] = pos[0]
+        self.properties['y'] = pos[1]
+        self.properties['vx'] = velocity[0]
+        self.properties['vy'] = velocity[1]
 
 def list_copy(lst):
     """
