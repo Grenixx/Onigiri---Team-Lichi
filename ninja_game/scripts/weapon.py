@@ -143,7 +143,7 @@ class Mace(WeaponBase):
         super().__init__(owner)
         original_animation = owner.game.assets['mace'].copy()
         scaled_images = [
-            pygame.transform.scale(img, (img.get_width() , img.get_height() ))
+            pygame.transform.scale(img, (img.get_width() // 8, img.get_height() // 8))
             for img in original_animation.images
         ]
         self.animation = original_animation.__class__(
