@@ -4,16 +4,16 @@ from math import *
 from TilemapServer import PHYSICS_TILES
 
 class EnemyManager:
-    def __init__(self, tilemap, num_enemies=200, speed=1.5):
+    def __init__(self, tilemap, num_enemies=200):
         self.tilemap = tilemap
         self.enemies = {}
         self.next_enemy_id = 1
-        self.speed = speed
+        self.players = []
         for _ in range(num_enemies):
-            self.create_enemy([random.randint(100,250), random.randint(40,100)], "blob")
+            self.create_enemy([random.randint(100,250), random.randint(40,100)], "mob2")
 
     def create_enemy(self, pos: list, enemy_type: str):
-        enemy_types = {"blob": Blob}
+        enemy_types = {"blob": Blob, "mob2": Mob2}
         self.enemies[self.next_enemy_id] = enemy_types[enemy_type](self.next_enemy_id, pos, self)
         self.next_enemy_id += 1
 
@@ -21,13 +21,14 @@ class EnemyManager:
         """Met à jour tous les ennemis en fonction de la map et des joueurs"""
         if not players:
             return
-        
+        self.players = players
+
         enemies = list_copy(self.enemies.items()) #dict can change size when running for loop
-        for eid, enemy in enemies:
-            enemy.physics_process(0.0, self.tilemap)
+        for _, enemy in enemies:
+            enemy.physics_process(0.0)
 
 class Enemy:
-    def __init__(self, eid, pos, enemy_manager):
+    def __init__(self, eid, pos, enemy_manager, speed):
         self.eid = eid
         self.properties = {
             'x': pos[0],
@@ -37,11 +38,12 @@ class Enemy:
             'target_player': None,
         }
         self.enemy_manager = enemy_manager
+        self.speed = speed
         print(f"ennemi créé en {pos} !")
-    def can_see_player(self, player, tilemap):
-        return not raycast_collide([self.properties['x'], self.properties['y']], 
+    def can_see_player(self, player):
+        return not raycast_collide([self.properties['x'], self.properties['y']],
                                     angle(vector_to([self.properties['x'], self.properties['y']], player)),
-                                    tilemap,
+                                    self.enemy_manager.tilemap,
                                     distane_to([self.properties['x'], self.properties['y']], player) - 10,
                                     4,
                                     PHYSICS_TILES
@@ -49,16 +51,25 @@ class Enemy:
     def create_enemy(self, pos: list, enemy_type: str):
         self.enemy_manager.create_enemy(pos, enemy_type)
 
+    def damage():
+        pass
+    
+    def kill():
+        pass
+
 class Blob(Enemy):
     def __init__(self, eid, pos, enemy_manager):
-        super().__init__(eid, pos, enemy_manager)
+        super().__init__(eid, pos, enemy_manager, 1.5)
+        self.properties['type'] = "blob"
     
-    def physics_process(self, delta: float, players: list, ):
+    def physics_process(self, delta: float):
         pos = [self.properties['x'], self.properties['y']]
         velocity = [self.properties['vx'], self.properties['vy']]
+        players = self.enemy_manager.players
+        tilemap = self.enemy_manager.tilemap
 
         # --- Gravité ---
-        if not self.enemy_manager.tilemap.solid_check((pos[0], pos[1] + 4)):
+        if not tilemap.solid_check((pos[0], pos[1] + 4)):
             velocity[1] += 0  # tombe
         else:
             velocity[1] = 0
@@ -71,7 +82,7 @@ class Blob(Enemy):
             if closest_dist == None or closest_dist > dist:
                 closest_dist,closest_pid = dist,pid
 
-        if distane_to(pos, players[closest_pid]) < 16*30 and self.can_see_player(self.properties, players[closest_pid]):
+        if distane_to(pos, players[closest_pid]) < 16*30 and self.can_see_player(players[closest_pid]):
             self.properties['target_player'] = closest_pid
             step = [0,0]
             dist = distane_to(pos, players[closest_pid])
@@ -83,12 +94,12 @@ class Blob(Enemy):
             new_x = pos[0] + step[0]
             new_y = pos[1] + step[1] + velocity[1]
 
-            if not self.enemy_manager.tilemap.solid_check((new_x, pos[1])):
+            if not tilemap.solid_check((new_x, pos[1])):
                 velocity[0] = step[0]
             else:
                 velocity[0] = 0
 
-            if not self.enemy_manager.tilemap.solid_check((pos[0], new_y)):
+            if not tilemap.solid_check((pos[0], new_y)):
                 velocity[1] += step[1]
             else:
                 velocity[1] = 0
@@ -105,15 +116,83 @@ class Blob(Enemy):
             
             # test
             if random.randint(0, 500) == 0:
-                new_blob_pos = raycast_pos(pos, angle(vector_to(pos, players[pid])), self.tilemap, distane_to(pos, players[pid]) - 10, 4, 10, PHYSICS_TILES, True)
+                new_blob_pos = raycast_pos(pos, angle(vector_to(pos, players[pid])), tilemap, distane_to(pos, players[pid]) - 10, 4, 10, PHYSICS_TILES, True)
                 if new_blob_pos != None:
-                    EnemyManager.create_enemy(new_blob_pos, "blob")
+                    self.create_enemy(new_blob_pos, "blob")
                 else:
                     print("raycast_pos failed")
         self.properties['x'] = pos[0]
         self.properties['y'] = pos[1]
         self.properties['vx'] = velocity[0]
         self.properties['vy'] = velocity[1]
+
+class Mob2(Enemy):
+    def __init__(self, eid, pos, enemy_manager):
+        super().__init__(eid, pos, enemy_manager, 1.5)
+        self.properties['type'] = "mob2"
+        self.players_last_pos = {}
+        self.wander_pos = []
+    
+    def physics_process(self, delta: float):
+        pos = [self.properties['x'], self.properties['y']]
+        velocity = [self.properties['vx'], self.properties['vy']]
+        players = self.enemy_manager.players
+        tilemap = self.enemy_manager.tilemap
+        
+        # --- Trouver la cible la plus proche ---
+        closest_dist = None
+        closest_pid = None
+        for pid in players.keys():
+            if pid in self.players_last_pos.keys():
+                dist = distance_squared_to(pos, self.players_last_pos[pid])
+                if closest_dist == None or closest_dist > dist:
+                    closest_dist,closest_pid = dist,pid
+        
+        dist_to_closest = -1
+        if closest_dist:
+            dist_to_closest = distane_to(pos, self.players_last_pos[closest_pid])
+        if dist_to_closest < 16*30 and dist_to_closest > 1:
+            self.properties['target_player'] = closest_pid
+            step = [0,0]
+            dist = distane_to(pos, players[closest_pid])
+            if dist > 1:
+                step = normalized(vector_to(pos, players[closest_pid]))
+                step = [i * self.speed for i in step]
+
+            # --- Test collisions map ---
+            new_x = pos[0] + step[0]
+            new_y = pos[1] + step[1] + velocity[1]
+
+            if not tilemap.solid_check((new_x, pos[1])):
+                velocity[0] = step[0]
+            else:
+                velocity[0] = 0
+
+            if not tilemap.solid_check((pos[0], new_y)):
+                velocity[1] = step[1]
+            else:
+                velocity[1] = 0
+
+            # Limites de la map
+
+        else:
+            pass
+            #if distane_to(self.wander_pos, pos) > 1:
+                
+        pos[0] = max(0, min(pos[0] + velocity[0], 1000))
+        pos[1] = max(0, min(pos[1] + velocity[1], 1000))
+        self.properties['x'] = pos[0]
+        self.properties['y'] = pos[1]
+        self.properties['vx'] = velocity[0]
+        self.properties['vy'] = velocity[1]
+        players_last_pos = {}
+        for pid in players.keys():
+            if self.can_see_player(players[pid]):
+                players_last_pos[pid] = [players[pid][0],players[pid][1]]
+            else:
+                if pid in self.players_last_pos.keys():
+                    players_last_pos[pid] = self.players_last_pos[pid]
+        self.players_last_pos = players_last_pos
 
 def list_copy(lst):
     """
