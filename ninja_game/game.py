@@ -73,9 +73,9 @@ class Game:
             'particle/particle': Animation(load_images(resource_path('data/images/particles/particle')), img_dur=6, loop=False),
             'gun': load_image(resource_path('data/images/gun.png')),
             'projectile': load_image(resource_path('data/images/projectile.png')),
-            'lance': load_image(resource_path('data/images/entities/weapon/lance.png')),
-            'sword': load_image(resource_path('data/images/entities/weapon/sword.png')),
-            'mace': Animation(load_images(resource_path('data/images/entities/weapon/mace1')), img_dur=5, loop=False),
+            'mace': Animation(load_images(resource_path('data/images/entities/weapon/mace')), img_dur=5, loop=False),
+            'mace1': Animation(load_images(resource_path('data/images/entities/weapon/mace1')), img_dur=5, loop=False),
+
         }
 
         self.sfx = {
@@ -118,8 +118,8 @@ class Game:
 
         self.lighting = LightingSystem(self.display.get_size())
 
-        self.weapon_type = 'lance' # On commence avec la lance
-        self.weaponDictionary = {1: 'lance', 2: 'mace', 3: 'sword'}
+        self.weapon_type = 'mace' # On commence avec la lance
+        self.weaponDictionary = {1: 'mace', 2: 'mace1', 3: 'sword'}
         self.currentWeaponIndex = 1
 
         self.font = pygame.font.SysFont("consolas", 16)
@@ -299,7 +299,7 @@ class Game:
                     if event.key == pygame.K_c:
                         self.currentWeaponIndex = (self.currentWeaponIndex % len(self.weaponDictionary)) + 1
                         self.weapon_type = self.weaponDictionary[self.currentWeaponIndex]
-                        self.player.weapon = Weapon(self.player, self.weapon_type)
+                        self.player.weapon.set_weapon(self.weapon_type)
                 # Si une touche est relâchée
                 if event.type == pygame.KEYUP or event.type == pygame.K_SPACE:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_q:
