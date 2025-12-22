@@ -126,11 +126,15 @@ class GameServer:
         msg_type = data[0]
 
         # --- Connexion ---
-        if msg_type == 10:  # 10 = connexion
+        if msg_type == 10:  # connexion
             if addr not in self.players.clients:
                 pid = self.players.add_player(addr)
-                self.sock.sendto(struct.pack("I", pid), addr)
                 print(f"Nouveau joueur {pid} ({addr})")
+            else:
+                pid = self.players.clients[addr]
+            
+            # renvoyer le PID à chaque paquet de connexion reçu
+            self.sock.sendto(struct.pack("I", pid), addr)
             return
 
         # -- ping --
