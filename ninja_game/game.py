@@ -8,7 +8,7 @@ from screeninfo import get_monitors
 
 from scripts.utils import load_image, load_images, Animation
 from scripts.entities import PhysicsEntity, Player, PurpleCircle, RemotePlayerRenderer
-from scripts.weapon import Weapon
+from scripts.weapon import WeaponBase
 from scripts.tilemap import Tilemap
 from scripts.clouds import Clouds
 from scripts.particle import Particle
@@ -73,9 +73,9 @@ class Game:
             'particle/particle': Animation(load_images(resource_path('data/images/particles/particle')), img_dur=6, loop=False),
             'gun': load_image(resource_path('data/images/gun.png')),
             'projectile': load_image(resource_path('data/images/projectile.png')),
-            'mace': Animation(load_images(resource_path('data/images/entities/weapon/mace'), True), img_dur=5, loop=False),
-            'mace1': Animation(load_images(resource_path('data/images/entities/weapon/mace1'), True), img_dur=5, loop=False),
-            'slashTriangle': Animation(load_images(resource_path('data/images/entities/weapon/slashTriangle'), True), img_dur=1.5, loop=False),
+            'mace': Animation(load_images(resource_path('data/images/entities/weapon/mace')), img_dur=5, loop=False),
+            'mace1': Animation(load_images(resource_path('data/images/entities/weapon/mace1')), img_dur=5, loop=False),
+
         }
 
         self.sfx = {
@@ -119,7 +119,7 @@ class Game:
         self.lighting = LightingSystem(self.display.get_size())
 
         self.weapon_type = 'mace' # On commence avec la lance
-        self.weaponDictionary = {1: 'mace', 2: 'mace1', 3: 'slashTriangle'}
+        self.weaponDictionary = {1: 'mace', 2: 'mace1', 3: 'sword'}
         self.currentWeaponIndex = 1
 
         self.font = pygame.font.SysFont("consolas", 16)
@@ -168,8 +168,8 @@ class Game:
             flip_byte = 1 if self.player.flip else 0
             self.net.send_state(self.player.pos[0], self.player.pos[1], action_id, flip_byte)
 
-            self.scroll[0] += (self.player.rect().centerx - self.display.get_width() / 2 - self.scroll[0])  #/5 # smooth cam
-            self.scroll[1] += (self.player.rect().centery - self.display.get_height() / 2 - self.scroll[1]) #/5 # smooth cam
+            self.scroll[0] += (self.player.rect().centerx - self.display.get_width() / 2 - self.scroll[0])  # /30 smooth cam
+            self.scroll[1] += (self.player.rect().centery - self.display.get_height() / 2 - self.scroll[1]) # /30 smooth cam
             render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
 
             # mettre à jour les autres joueurs
@@ -280,33 +280,37 @@ class Game:
                     self.net.disconnect()
                     pygame.quit()
                     sys.exit()
+
                 # Si une touche est pressée
                 if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        event.type = pygame.QUIT
                     if event.key == pygame.K_F1:
                         self.player.weapon.weapon_equiped.toggle_debug()
                         self.debug = not self.debug
                     # Mouvement horizontal
-                    if event.key == pygame.K_LEFT or event.key == pygame.K_q:
-                        self.movement[0] = True
-                        self.player.is_pressed = 'left'
-                    if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
-                        self.movement[1] = True
-                        self.player.is_pressed = 'right'
-                    if event.key == pygame.K_UP or event.key == pygame.K_z:
-                        self.player.is_pressed = 'up'
-                    # On vérifie d'abord la touche, PUIS on tente de sauter.
-                    if event.key == pygame.K_SPACE:
-                        if self.player.request_jump():
-                            self.sfx['jump'].play()
-                    if event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                        # On stocke l'information que la touche bas est pressée
-                        self.player.is_pressed = 'down'
-                    if event.key == pygame.K_x or event.key == pygame.K_LSHIFT:
-                        self.player.dash()
-                    if event.key == pygame.K_c:
-                        self.currentWeaponIndex = (self.currentWeaponIndex % len(self.weaponDictionary)) + 1
-                        self.weapon_type = self.weaponDictionary[self.currentWeaponIndex]
-                        self.player.weapon.set_weapon(self.weapon_type)
+                    if not self.player.action.startswith('attack'):  # or self.player.weapon.weapon_equiped.attack_timer < 8: trouver un moyen "d'aider" le joueur à tourner meme s'il presse trop tot
+                        if event.key == pygame.K_LEFT or event.key == pygame.K_q:
+                            self.movement[0] = True
+                            self.player.is_pressed = 'left'
+                        if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
+                            self.movement[1] = True
+                            self.player.is_pressed = 'right'
+                        if event.key == pygame.K_UP or event.key == pygame.K_z:
+                            self.player.is_pressed = 'up'
+                        # On vérifie d'abord la touche, PUIS on tente de sauter.
+                        if event.key == pygame.K_SPACE:
+                            if self.player.request_jump():
+                                self.sfx['jump'].play()
+                        if event.key == pygame.K_DOWN or event.key == pygame.K_s:
+                            # On stocke l'information que la touche bas est pressée
+                            self.player.is_pressed = 'down'
+                        if event.key == pygame.K_x or event.key == pygame.K_LSHIFT:
+                            self.player.dash()
+                        if event.key == pygame.K_c:
+                            self.currentWeaponIndex = (self.currentWeaponIndex % len(self.weaponDictionary)) + 1
+                            self.weapon_type = self.weaponDictionary[self.currentWeaponIndex]
+                            self.player.weapon.set_weapon(self.weapon_type)
                 # Si une touche est relâchée
                 if event.type == pygame.KEYUP or event.type == pygame.K_SPACE:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_q:

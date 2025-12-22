@@ -231,7 +231,7 @@ class Player(PhysicsEntity):
 
     def attack(self, direction):
         # On ne peut pas attaquer si on est déjà en train d'attaquer ou de dasher
-        if (not self.action.startswith('attack') or self.animation.done) and not self.dashing and not self.wall_slide:
+        if (not self.action.startswith('attack') or self.animation.done) and not self.wall_slide:
             
             attack_direction = 'front' # Direction par défaut
 
