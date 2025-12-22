@@ -172,18 +172,16 @@ class Game:
             self.scroll[1] += (self.player.rect().centery - self.display.get_height() / 2 - self.scroll[1]) # /30 smooth cam
             render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
 
-
             # mettre à jour les autres joueurs
             #self.remote_players = self.net.players
             self.remote_players = self.net.remote_players
+
             self.display.fill((0, 0, 0, 0))
-            #self.display_2.blit(self.assets['background'], (0, 0))
-            #shader_surface = self.shader_bg.render()
-            #self.display_2.blit(shader_surface, (0, 0))
-            # scroll = position de la caméra dans ton jeu
+            # scroll = position de la caméra
+            # --- BACKGROUND ---
             shader_surface = self.shader_bg.render(camera=(render_scroll[0] * 0.2, render_scroll[1] * -0.2))
             self.display_2.blit(shader_surface, (0, 0))
-
+            self.clouds.render(self.display_2, offset=render_scroll)
 
 
             self.screenshake = max(0, self.screenshake - 1)
@@ -207,20 +205,21 @@ class Game:
                     pos = (rect.x + random.random() * rect.width, rect.y + random.random() * rect.height)
                     self.particles.append(Particle(self, 'leaf', pos, velocity=[-0.1, 0.3], frame=random.randint(0, 20)))
             
-            self.clouds.update()
-            self.clouds.render(self.display_2, offset=render_scroll)
-            
+            # --- TILEMAP / GRASS ---
             self.tilemap.render(self.display, offset=render_scroll)
-            
-            # --- Afficher les ennemis depuis le serveur (cercles violets) ---
-            # --- Rendu des ennemis ---
-            self.enemies_renderer.update()  # vérifie collisions / dash kill
-            self.enemies_renderer.render(self.display, offset=render_scroll)
+            self.tilemap.grass_manager.update_render(self.display, 1/10, offset=render_scroll,
+                rot_function=lambda x, y: int(math.sin(x / 100 + pygame.time.get_ticks() / 300) * 30) / 10)
 
             
+            # --- ENEMIES ---
+            self.enemies_renderer.update()
+            self.enemies_renderer.render(self.display, offset=render_scroll)
+
+            # --- PLAYER ---
             if not self.dead:
                 self.player.update(self.tilemap, (self.movement[1] - self.movement[0], 0))
                 self.player.render(self.display, offset=render_scroll)
+
             
             # [[x, y], direction, timer]
             for projectile in self.projectiles.copy():
@@ -251,19 +250,27 @@ class Game:
                 spark.render(self.display, offset=render_scroll)
                 if kill:
                     self.sparks.remove(spark)
-                    
-            display_mask = pygame.mask.from_surface(self.display)
-            display_sillhouette = display_mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
-            for offset in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                self.display_2.blit(display_sillhouette, offset)
-            
+
             for particle in self.particles.copy():
                 kill = particle.update()
                 particle.render(self.display, offset=render_scroll)
                 if particle.type == 'leaf':
-                    particle.pos[0] += math.sin(particle.animation.frame * 0.035) * 0.3
+                    particle.pos[0] += math.sin(pygame.time.get_ticks() * 0.035) * 0.3
                 if kill:
                     self.particles.remove(particle)
+
+            #display_mask = pygame.mask.from_surface(self.display)
+            #display_sillhouette = display_mask.to_surface(
+            #    setcolor=(0, 0, 0, 180),
+            #    unsetcolor=(0, 0, 0, 0)
+            #)
+            #for offset in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            #    self.display_2.blit(display_sillhouette, offset)
+            # --- REMOTE PLAYERS ---
+            self.remote_players_renderer.render(self.display, offset=render_scroll)
+
+            self.display_2.blit(self.display, (0, 0))
+
             
             # (le reste de ta boucle inchangé)
              # (le reste de ta boucle inchangé)
@@ -349,37 +356,17 @@ class Game:
                 if self.controller.right_trigger > 0.2:
                     self.player.dash()
 
-                        
             if self.transition:
                 transition_surf = pygame.Surface(self.display.get_size())
                 pygame.draw.circle(transition_surf, (255, 255, 255), (self.display.get_width() // 2, self.display.get_height() // 2), (30 - abs(self.transition)) * 8)
                 transition_surf.set_colorkey((255, 255, 255))
-                self.display.blit(transition_surf, (0, 0))
+                self.display_2.blit(transition_surf, (0, 0))
+
             
             #self.tilemap.grass_manager.update_render(self.display,1/60, offset=self.scroll)
             #gd.grass_manager.update_render(display, 1 / 60, offset=gd.scroll.copy(), rot_function=lambda x, y: int(math.sin(x / 100 + global_time / 40) * 30) / 10)
             self.tilemap.grass_manager.update_render(self.display, 1/10, offset=render_scroll, rot_function=lambda x, y: int(math.sin(x / 100 + pygame.time.get_ticks() / 300) * 30) / 10)
 
-            #self.tilemap.grass_manager.apply_force(self.player.pos, 12, 24)
-            #positions = {}
-            #for pid, data in self.remote_players.items():
-            #    if pid == self.net.id:
-            #        continue  # on ignore soi-même
-            #    x, y, action, flip = data
-            #    positions[pid] = (x, y)
-            
-            #if pid in self.remote_players:
-            #    if pid == self.net.id:
-             #       continue  # on ignore soi-même
-             #   else:
-             #       print(positions[pid])
-            # --- COMPOSITION FINALE ---
-            # On blitte la tilemap et les entités sur display_2
-            self.display_2.blit(self.display, (0, 0))
-
-            # --- afficher les autres joueurs ---
-            self.remote_players_renderer.render(self.display, offset=render_scroll)
-            self.display_2.blit(self.display, (0, 0))
             """
             # --- APPLICATION DE L’ÉCLAIRAGE APRÈS TOUT ---
             light_sources = [
