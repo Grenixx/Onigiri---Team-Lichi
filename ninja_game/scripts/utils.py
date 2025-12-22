@@ -11,20 +11,26 @@ def resource_path(relative_path):
 
 BASE_IMG_PATH = 'data/images/'
 
-def load_image(path):
+def load_image(path, convert_alpha=False):
     """path doit être relatif à BASE_IMG_PATH"""
     full_path = resource_path(os.path.join(BASE_IMG_PATH, path))
-    img = pygame.image.load(full_path).convert()
+    img = pygame.image.load(full_path)
+    if convert_alpha:
+        img = img.convert_alpha()
+    else:
+        img = img.convert()
     img.set_colorkey((0, 0, 0))
     return img
 
-def load_images(path):
+
+def load_images(path, convert_alpha=False):
     """path doit être relatif à BASE_IMG_PATH"""
     folder_path = resource_path(os.path.join(BASE_IMG_PATH, path))
     images = []
     for img_name in sorted(os.listdir(folder_path)):
-        images.append(load_image(os.path.join(path, img_name)))  # ne pas rajouter BASE_IMG_PATH ici !
+        images.append(load_image(os.path.join(path, img_name), convert_alpha=convert_alpha))  # ne pas rajouter BASE_IMG_PATH ici !
     return images
+
 
 class Animation:
     def __init__(self, images, img_dur=5, loop=True):

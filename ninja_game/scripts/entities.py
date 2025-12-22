@@ -59,6 +59,8 @@ class PhysicsEntity:
                     entity_rect.top = rect.bottom
                     self.collisions['up'] = True
                 self.pos[1] = entity_rect.y
+
+        
                 
         if movement[0] > 0:
             self.flip = False
@@ -73,6 +75,8 @@ class PhysicsEntity:
             self.velocity[1] = 0
             
         self.animation.update()
+        #self.pos[0] = round(self.pos[0])
+        #self.pos[1] = round(self.pos[1])
         
     def render(self, surf, offset=(0, 0)):
         surf.blit(pygame.transform.flip(self.animation.img(), self.flip, False),
@@ -108,7 +112,9 @@ class Player(PhysicsEntity):
                 self.game.screenshake = max(16, self.game.screenshake)
             self.game.dead += 1
         
-        if self.collisions['down']:
+        if self.wall_slide:
+            self.air_time = 5
+        if self.collisions['down'] :
             self.air_time = 0
             # On redonne 2 sauts au joueur quand il touche le sol.
             self.jumps = True
@@ -225,7 +231,7 @@ class Player(PhysicsEntity):
 
     def attack(self, direction):
         # On ne peut pas attaquer si on est déjà en train d'attaquer ou de dasher
-        if (not self.action.startswith('attack') or self.animation.done) and not self.dashing and not self.wall_slide:
+        if (not self.action.startswith('attack') or self.animation.done) and not self.wall_slide:
             
             attack_direction = 'front' # Direction par défaut
 
@@ -285,9 +291,6 @@ class PurpleCircle:
 
             if hit_by_dash or hit_by_weapon:
                 to_remove.append(eid)
-
-        
-            
 
         for eid in to_remove:
             # Supprime localement pour effet instantané

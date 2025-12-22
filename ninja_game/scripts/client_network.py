@@ -24,21 +24,32 @@ class ClientNetwork:
 
 
     def connect(self):
-        self.sock.sendto(b'\x0A', self.server)
-        while self.id is None:
+        print("Connexion au serveur...")
+        while self.id is None and self.running:
             try:
-                data, _ = self.sock.recvfrom(4)
-                if len(data) >= 4:
-                    self.id = struct.unpack("I", data)[0]
-                    print(f"Connected with ID {self.id}")
-            except socket.timeout:
-                print("Tentative de connexion au serveur...")
-                pass
+                # envoyer le paquet de connexion
+                self.sock.sendto(b'\x0A', self.server)
+                start_time = time.time()
+
+                while time.time() - start_time < 2:  # attente max 2 secondes
+                    try:
+                        data, _ = self.sock.recvfrom(4096)
+                        if len(data) == 4:
+                            self.id = struct.unpack("I", data)[0]
+                            print(f"Connected with ID {self.id}")
+                            break
+                        else:
+                            print("Paquet inattendu reçu, en attente du PID...")
+                    except socket.timeout:
+                        pass
+
+                if self.id is None:
+                    print("Timeout, nouvelle tentative de connexion...")
+                    time.sleep(0.5)
+
             except ConnectionResetError:
                 print("Serveur injoignable, nouvelle tentative...")
                 time.sleep(0.5)
-                self.sock.sendto(b'\x0A', self.server)
-
 
     def listen(self):
         while self.running:
