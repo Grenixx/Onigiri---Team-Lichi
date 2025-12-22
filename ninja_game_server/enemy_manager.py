@@ -4,7 +4,7 @@ from math import *
 from TilemapServer import PHYSICS_TILES
 
 class EnemyManager:
-    def __init__(self, tilemap, num_enemies=200):
+    def __init__(self, tilemap, num_enemies=20):
         self.tilemap = tilemap
         self.enemies = {}
         self.next_enemy_id = 1
