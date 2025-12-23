@@ -119,9 +119,10 @@ class Player(PhysicsEntity):
         self.wall_slide_speed = 30  # pixels/seconde maximum en glissade
 
         self.air_resistance = 600  # pixels/seconde²
-        self.dash_duration = 0.5   # secondes (correspond à 30 frames à 60 FPS)
+        self.dash_duration = 0.1   # secondes (correspond à 30 frames à 60 FPS)
+        self.dash_speed = 200
         self.dash_cooldown = 0.5   # secondes (correspond à 30 frames à 60 FPS)
-        self.dash_invisible_duration = 0.2  # secondes (correspond à 12 frames à 60 FPS)
+        self.dash_invisible_duration = 0.02  # secondes (correspond à 12 frames à 60 FPS)
 
     def update(self, tilemap, movement=(0, 0), dt=0):
         super().update(tilemap, movement=movement, dt=dt) 
@@ -203,8 +204,8 @@ class Player(PhysicsEntity):
         if self.dashing != 0:
             # La vélocité est de 8 pixels/frame ? Non, nous sommes en pixels/seconde.
             # 8 pixels/frame à 60 FPS = 480 pixels/seconde.
-            dash_speed = 480  # pixels/seconde
-            self.velocity[0] = dash_speed if self.dashing > 0 else -dash_speed
+              # pixels/seconde
+            self.velocity[0] = self.dash_speed if self.dashing > 0 else -self.dash_speed
             # Au tout début du dash, on réduit un peu la vélocité pour un effet
             if dash_progress > 0.9:
                 self.velocity[0] *= 0.1
