@@ -122,7 +122,7 @@ class Player(PhysicsEntity):
         self.dash_duration = 0.1   # secondes (correspond à 30 frames à 60 FPS)
         self.dash_speed = 200
         self.dash_cooldown = 0.5   # secondes (correspond à 30 frames à 60 FPS)
-        self.dash_invisible_duration = 0.02  # secondes (correspond à 12 frames à 60 FPS)
+        self.dash_invisible_duration = 0.1  # secondes (correspond à 12 frames à 60 FPS)
 
     def update(self, tilemap, movement=(0, 0), dt=0):
         super().update(tilemap, movement=movement, dt=dt) 

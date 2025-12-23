@@ -91,7 +91,7 @@ class WeaponBase:
             direction = "left" if self.owner.flip else "right"
 
         #print()
-        if direction == "down" and not self.owner.air_time > 5:
+        if direction == "down" and not self.owner.air_time > 0.09:
             direction = "left" if self.owner.flip else "right"
 
         self.attack_direction = direction
