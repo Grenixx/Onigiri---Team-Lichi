@@ -111,12 +111,17 @@ class Player(PhysicsEntity):
 
         self.jump_force = -250  # pixels/seconde (négatif = vers le haut)
         self.wall_jump_force_x = 210  # pixels/seconde
-        self.wall_jump_force_y = -150  # pixels/seconde
+        self.wall_jump_force_y = -230  # pixels/seconde
         
         # Constantes pour la détection (en secondes, pas en frames)
         self.coyote_time = 0.15  # secondes au lieu de 9 frames
         self.jump_buffer_time = 0.2  # secondes au lieu de 12 frames
         self.wall_slide_speed = 30  # pixels/seconde maximum en glissade
+
+        self.air_resistance = 600  # pixels/seconde²
+        self.dash_duration = 0.5   # secondes (correspond à 30 frames à 60 FPS)
+        self.dash_cooldown = 0.5   # secondes (correspond à 30 frames à 60 FPS)
+        self.dash_invisible_duration = 0.2  # secondes (correspond à 12 frames à 60 FPS)
 
     def update(self, tilemap, movement=(0, 0), dt=0):
         super().update(tilemap, movement=movement, dt=dt) 
@@ -177,23 +182,38 @@ class Player(PhysicsEntity):
                                                     velocity=pvelocity,
                                                     frame=random.randint(0, 7)))
         if self.dashing > 0:
-            self.dashing = max(0, self.dashing - 1)
+            self.dashing = max(0, self.dashing - dt)
         if self.dashing < 0:
-            self.dashing = min(0, self.dashing + 1)
-        if abs(self.dashing) > 50:
-            self.velocity[0] = abs(self.dashing) / self.dashing * 8
-            if abs(self.dashing) == 51:
+            self.dashing = min(0, self.dashing + dt)
+
+            
+                # Particules de début et de fin de dash
+        dash_progress = abs(self.dashing) / self.dash_duration
+        if dash_progress > 0.9 or (dash_progress < 0.1 and self.dashing != 0):
+            for i in range(20):
+                angle = random.random() * math.pi * 2
+                speed = random.random() * 0.5 + 0.5
+                pvelocity = [math.cos(angle) * speed, math.sin(angle) * speed]
+                self.game.particles.append(Particle(self.game, 'particle',
+                                                    self.rect().center,
+                                                    velocity=pvelocity,
+                                                    frame=random.randint(0, 7)))
+
+        # Pendant le dash, on donne une vélocité horizontale
+        if self.dashing != 0:
+            # La vélocité est de 8 pixels/frame ? Non, nous sommes en pixels/seconde.
+            # 8 pixels/frame à 60 FPS = 480 pixels/seconde.
+            dash_speed = 480  # pixels/seconde
+            self.velocity[0] = dash_speed if self.dashing > 0 else -dash_speed
+            # Au tout début du dash, on réduit un peu la vélocité pour un effet
+            if dash_progress > 0.9:
                 self.velocity[0] *= 0.1
-            pvelocity = [abs(self.dashing) / self.dashing * random.random() * 3, 0]
-            self.game.particles.append(Particle(self.game, 'particle',
-                                                self.rect().center,
-                                                velocity=pvelocity,
-                                                frame=random.randint(0, 7)))
                 
+                # Résistance de l'air (décélération horizontale)
         if self.velocity[0] > 0:
-            self.velocity[0] = max(self.velocity[0] - 0.1, 0)
-        else:
-            self.velocity[0] = min(self.velocity[0] + 0.1, 0)
+            self.velocity[0] = max(self.velocity[0] - self.air_resistance * dt, 0)
+        elif self.velocity[0] < 0:
+            self.velocity[0] = min(self.velocity[0] + self.air_resistance * dt, 0)
         
         
         #force_pos = self.rect().center  # (x_pixels, y_pixels)
@@ -206,7 +226,7 @@ class Player(PhysicsEntity):
 
     
     def render(self, surf, offset=(0, 0)):
-        if abs(self.dashing) <= 50:
+        if abs(self.dashing) <= self.dash_duration - self.dash_invisible_duration:
             super().render(surf, offset=offset)
             # Puis on dessine l'arme par-dessus pour qu'elle soit devant
             self.weapon.weapon_equiped.render(surf, offset)
@@ -241,9 +261,9 @@ class Player(PhysicsEntity):
         if not self.dashing:
             self.game.sfx['dash'].play()
             if self.flip:
-                self.dashing = -60
+                self.dashing = -self.dash_duration
             else:
-                self.dashing = 60
+                self.dashing = self.dash_duration
     def request_jump(self):
         # Si on ne peut pas sauter immédiatement (car en l'air), on active le buffer.
         # 12 frames = 0.2s. C'est la fenêtre pendant laquelle le jeu se souviendra de l'appui.
