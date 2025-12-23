@@ -155,6 +155,7 @@ class Game:
         self.sfx['ambience'].play(-1)
         
         while True:
+            dt = self.clock.tick(60) / 1000  # dt en secondes
             # Définir le mapping action -> int
             action_mapping = {
                 "idle": 0, "run": 1, "jump": 2, "wall_slide": 3, "slide": 4,
@@ -217,7 +218,7 @@ class Game:
 
             # --- PLAYER ---
             if not self.dead:
-                self.player.update(self.tilemap, (self.movement[1] - self.movement[0], 0))
+                self.player.update(self.tilemap, (self.movement[1] - self.movement[0], 0),dt=dt)
                 self.player.render(self.display, offset=render_scroll)
 
             
@@ -402,7 +403,7 @@ class Game:
 
 
             pygame.display.update()
-            self.clock.tick(60)
+            #self.clock.tick()
 
     
 Game().run()

@@ -6,6 +6,21 @@ from scripts.spark import Spark
 from scripts.weapon import Weapon
 from scripts.grass import GrassManager
 
+GRAVITY = 6.0          # équivalent à +0.1/frame
+MAX_FALL_SPEED = 5.0
+
+FRICTION = 6.0         # équivalent à 0.1/frame
+RUN_SPEED = 10.0
+
+JUMP_FORCE = -3.0
+WALL_JUMP_X = 3.5
+WALL_JUMP_Y = -2.5
+
+COYOTE_TIME = 0.15     # 9 frames
+JUMP_BUFFER_TIME = 0.20  # 12 frames
+
+DASH_TIME = 1.0        # 60 frames
+DASH_SPEED = 8.0
 
 class PhysicsEntity:
     def __init__(self, game, e_type, pos, size):
@@ -31,12 +46,15 @@ class PhysicsEntity:
             self.action = action
             self.animation = self.game.assets[self.type + '/' + self.action].copy()
         
-    def update(self, tilemap, movement=(0, 0)):
+    def update(self, tilemap, movement=(0, 0), dt=0):
         self.collisions = {'up': False, 'down': False, 'right': False, 'left': False}
         
-        frame_movement = (movement[0] + self.velocity[0], movement[1] + self.velocity[1])
-        
-        self.pos[0] += frame_movement[0]
+        frame_movement = (
+        (movement[0] + self.velocity[0]) * dt,
+        (movement[1] + self.velocity[1]) * dt 
+        )
+
+        self.pos[0] += frame_movement[0] 
         entity_rect = self.rect()
         for rect in tilemap.physics_rects_around(self.pos):
             if entity_rect.colliderect(rect):
@@ -48,7 +66,7 @@ class PhysicsEntity:
                     self.collisions['left'] = True
                 self.pos[0] = entity_rect.x
         
-        self.pos[1] += frame_movement[1]
+        self.pos[1] += frame_movement[1] 
         entity_rect = self.rect()
         for rect in tilemap.physics_rects_around(self.pos):
             if entity_rect.colliderect(rect):
@@ -69,7 +87,10 @@ class PhysicsEntity:
             
         self.last_movement = movement
         
-        self.velocity[1] = min(5, self.velocity[1] + 0.1)
+        self.velocity[1] = min(
+        MAX_FALL_SPEED,
+        self.velocity[1] + GRAVITY * dt
+    )
         
         if self.collisions['down'] or self.collisions['up']:
             self.velocity[1] = 0
@@ -99,24 +120,25 @@ class Player(PhysicsEntity):
         self.jump_buffer_timer = 0
         # On crée une instance de l'arme et on la lie au joueur
         self.weapon = Weapon(self)
-    
-    def update(self, tilemap, movement=(0, 0)):
-        super().update(tilemap, movement=movement) 
+
+    def update(self, tilemap, movement=(0, 0), dt=0):
+        super().update(tilemap, movement=movement, dt=dt) 
         if self.collisions['down']:
             self.air_time = 0
         else:
-            self.air_time += 1
-        
-        self.weapon.weapon_equiped.update()
-        self.jump_buffer_timer = max(0, self.jump_buffer_timer - 1)
+            self.air_time += dt
 
-        if self.air_time > 120:
+        self.weapon.weapon_equiped.update()
+        self.jump_buffer_timer = max(0, self.jump_buffer_timer - dt)
+
+
+        if self.air_time > 2.0:
             if not self.game.dead:
                 self.game.screenshake = max(16, self.game.screenshake)
             self.game.dead += 1
         
         if self.wall_slide:
-            self.air_time = 5
+            self.air_time = 0.1
         if self.collisions['down'] :
             self.air_time = 0
             # On redonne 2 sauts au joueur quand il touche le sol.
@@ -127,7 +149,7 @@ class Player(PhysicsEntity):
                 self.jump()
              
         self.wall_slide = False
-        if (self.collisions['right'] or self.collisions['left']) and self.air_time > 4 and not self.collisions['down']:
+        if (self.collisions['right'] or self.collisions['left']) and self.air_time > 0.07 and not self.collisions['down']:
             self.wall_slide = True
             self.velocity[1] = min(self.velocity[1], 0.5)
             if self.collisions['right']:
@@ -137,7 +159,7 @@ class Player(PhysicsEntity):
             self.set_action('wall_slide')
         
         if not self.wall_slide and not self.action.startswith('attack'):
-            if self.air_time > 4:
+            if self.air_time > 0.07:
                 self.set_action('jump')
             elif movement[0] != 0:
                 self.set_action('run')
@@ -147,34 +169,22 @@ class Player(PhysicsEntity):
         if self.action.startswith('attack') and self.animation.done:
             self.set_action('idle')
         
-        if abs(self.dashing) in {60, 50}:
-            for i in range(20):
-                angle = random.random() * math.pi * 2
-                speed = random.random() * 0.5 + 0.5
-                pvelocity = [math.cos(angle) * speed, math.sin(angle) * speed]
-                self.game.particles.append(Particle(self.game, 'particle',
-                                                    self.rect().center,
-                                                    velocity=pvelocity,
-                                                    frame=random.randint(0, 7)))
-        if self.dashing > 0:
-            self.dashing = max(0, self.dashing - 1)
-        if self.dashing < 0:
-            self.dashing = min(0, self.dashing + 1)
-        if abs(self.dashing) > 50:
-            self.velocity[0] = abs(self.dashing) / self.dashing * 8
-            if abs(self.dashing) == 51:
-                self.velocity[0] *= 0.1
-            pvelocity = [abs(self.dashing) / self.dashing * random.random() * 3, 0]
-            self.game.particles.append(Particle(self.game, 'particle',
-                                                self.rect().center,
-                                                velocity=pvelocity,
-                                                frame=random.randint(0, 7)))
-                
+        if self.dashing != 0:
+            self.dashing -= math.copysign(dt, self.dashing)
+            if abs(self.dashing) < 0.01:
+                self.dashing = 0
+
+        if self.dashing != 0:
+            self.velocity[0] = DASH_SPEED * math.copysign(1, self.dashing)
+
+        if movement[0] != 0 and self.dashing == 0:
+            self.velocity[0] = movement[0] * RUN_SPEED
+
         if self.velocity[0] > 0:
-            self.velocity[0] = max(self.velocity[0] - 0.1, 0)
+            self.velocity[0] = max(0, self.velocity[0] - FRICTION * dt)
         else:
-            self.velocity[0] = min(self.velocity[0] + 0.1, 0)
-        
+            self.velocity[0] = min(0, self.velocity[0] + FRICTION * dt)
+
         
         #force_pos = self.rect().center  # (x_pixels, y_pixels)
         #self.game.tilemap.grass_manager.update_render(self.game.display,1/60, offset=self.game.scroll)
@@ -186,31 +196,32 @@ class Player(PhysicsEntity):
 
     
     def render(self, surf, offset=(0, 0)):
-        if abs(self.dashing) <= 50:
+        if self.dashing <= 0.5:
             super().render(surf, offset=offset)
-            # Puis on dessine l'arme par-dessus pour qu'elle soit devant
             self.weapon.weapon_equiped.render(surf, offset)
+
             
     def jump(self):
         if self.wall_slide:
             if self.flip and self.last_movement[0] < 0:
                 self.velocity[0] = 3.5
                 self.velocity[1] = -2.5
-                self.air_time = 5
+                self.air_time = 0
                 self.jumps = False
                 return True
             elif not self.flip and self.last_movement[0] > 0:
                 self.velocity[0] = -3.5
                 self.velocity[1] = -2.5
-                self.air_time = 5
+                self.air_time = 0
+
                 self.jumps = False
                 return True
                 
         # Saut normal ou "Coyote Time" : si on a un saut et qu'on est en l'air depuis peu de temps
-        elif self.jumps and self.air_time < 9: # 9 frames = ~0.15s
-            self.velocity[1] = -3
+        elif self.jumps and self.air_time < COYOTE_TIME: # 9 frames = ~0.15s
+            self.velocity[1] = JUMP_FORCE
             self.jumps = False
-            self.air_time = 5
+            self.air_time = 0
             self.jump_buffer_timer = 0 # On a sauté, on annule le buffer
             return True
     
@@ -220,15 +231,13 @@ class Player(PhysicsEntity):
     def dash(self):
         if not self.dashing:
             self.game.sfx['dash'].play()
-            if self.flip:
-                self.dashing = -60
-            else:
-                self.dashing = 60
+            self.dashing = DASH_TIME * (-1 if self.flip else 1)
+
     def request_jump(self):
         # Si on ne peut pas sauter immédiatement (car en l'air), on active le buffer.
         # 12 frames = 0.2s. C'est la fenêtre pendant laquelle le jeu se souviendra de l'appui.
         if not self.jump():
-            self.jump_buffer_timer = 12
+            self.jump_buffer_timer = JUMP_BUFFER_TIME
             return False
         return True
 
