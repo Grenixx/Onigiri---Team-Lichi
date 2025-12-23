@@ -2,7 +2,7 @@ import sys
 import pygame
 
 pygame.init()
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 1920, 1080
 FPS = 60
 BG_COLOR = (30, 30, 40)
 BUTTON_COLOR = (70, 130, 180)
@@ -10,8 +10,12 @@ BUTTON_HOVER = (100, 160, 210)
 TEXT_COLOR = (255, 255, 255)
 FONT_NAME = None  
 FONT_SIZE = 36
+CONTROLS={"LEFT":pygame.K_q,"RIGHT":pygame.K_s,"JUMP":pygame.K_SPACE,"DASH":pygame.K_LSHIFT,"CHANGE ARM":pygame.K_TAB}
+wait_key=False
+action_changing=None
 
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("Menu")
 clock = pygame.time.Clock()
 font = pygame.font.Font(FONT_NAME, FONT_SIZE)
@@ -19,7 +23,7 @@ font = pygame.font.Font(FONT_NAME, FONT_SIZE)
 def render_text(text, font, color):
     return font.render(text, True, color)
 
-    
+
 class Button:
     def __init__(self, rect, text, callback, font,
                  color=BUTTON_COLOR, hover_color=BUTTON_HOVER,
@@ -95,7 +99,6 @@ class Menu:
             elif event.key == pygame.K_UP:
                 self.selected = (self.selected - 1) % len(self.items)
             elif event.key == pygame.K_RETURN or event.key == pygame.K_KP_ENTER:
-                # Trigger selected button
                 selected_btn = self.items[self.selected]
                 if callable(selected_btn.callback):
                     selected_btn.callback()
@@ -135,12 +138,26 @@ def toggle_dummy_setting():
     options_menu.items[0].text = text
     options_menu.items[0]._render_label()
 
+def resize(new_width, new_height):
+    global WIDTH,HEIGHT, screen
+    WIDTH,HEIGHT = new_width,new_height
+    screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+    last_menu.draw(screen)
+    
+
+def rebinding(action):
+    global wait_key, action_changing
+    wait_key = True
+    action_changing = action
+    
+    
 
 
-main_menu = Menu("Main Menu", [("Play", start_game),("Options", open_options),("Quit", quit_game),], font)
-options_menu = Menu("Options", [("Sound: On", toggle_dummy_setting),("Keyboards",lambda: set_active_menu(keyboard_menu)),("Graphics",lambda: set_active_menu(graphics_menu)),("Back", lambda: set_active_menu(main_menu)),], font)
+
+main_menu = Menu("Main Menu", [("START GAME", start_game),("OPTIONS", open_options),("QUIT GAME", quit_game),], font)
+options_menu = Menu("Options", [("Audio",None),("Keyboards",lambda: set_active_menu(keyboard_menu)),("Graphics",lambda: set_active_menu(graphics_menu)),("Back", lambda: set_active_menu(main_menu)),], font)
 keyboard_menu = Menu("Keyboard", [("Jump",None),("Attack",None),("Dodge",None),("left",None),("Right",None),("Back", lambda: set_active_menu(options_menu))],font)
-graphics_menu = Menu("Graphics",[("Resolution",None),("Back", lambda: set_active_menu(options_menu))],font)
+graphics_menu = Menu("Graphics",[("1920-1080",lambda: resize(1920, 1080)),("1680-1050",lambda: resize(1680, 1050)),("1280-720",lambda: resize(1280,720)),("1024-768",lambda: resize(1024,768)),("800-600",lambda: resize(800,600)),("Back", lambda: set_active_menu(options_menu))],font)
 
 
 
@@ -162,6 +179,12 @@ def main():
                 sys.exit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 set_active_menu(last_menu)
+            global wait_key, action_changing
+            if wait_key and event.type == pygame.KEYDOWN:
+                CONTROLS[action_changing] = event.key
+                wait_key = False
+                action_changing = None
+                continue
             if active_menu:
                 active_menu.handle_event(event)
         screen.fill(BG_COLOR)
