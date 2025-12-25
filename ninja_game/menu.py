@@ -15,6 +15,9 @@ CONTROLS={"LEFT":pygame.K_q,"RIGHT":pygame.K_s,"JUMP":pygame.K_SPACE,"DASH":pyga
 wait_key=False
 action_changing=None
 
+from screeninfo import get_monitors
+
+
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("Menu")
@@ -108,8 +111,15 @@ class Menu:
 
 
 def start_game():
+    
+    max_fps = 60  
+    monitors = get_monitors()
+    if monitors and hasattr(monitors[0], 'refresh_rate') and monitors[0].refresh_rate:
+        max_fps = monitors[0].refresh_rate
+
+    print(f"Max FPS de l'écran : {max_fps}")
     in_game = True
-    game = Game(max_fps=60)
+    game = Game(max_fps=max_fps)
     game.run()
     while in_game:
         for ev in pygame.event.get():

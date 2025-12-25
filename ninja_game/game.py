@@ -407,4 +407,4 @@ class Game:
             #self.clock.tick()
 
     
-Game().run()
+#Game().run()
