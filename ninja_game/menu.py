@@ -115,6 +115,7 @@ def start_game():
     max_fps = 60  
     monitors = get_monitors()
     if monitors and hasattr(monitors[0], 'refresh_rate') and monitors[0].refresh_rate:
+        
         max_fps = monitors[0].refresh_rate
 
     print(f"Max FPS de l'écran : {max_fps}")
