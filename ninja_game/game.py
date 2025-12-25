@@ -33,7 +33,8 @@ def resource_path(relative_path):
 
 
 class Game:
-    def __init__(self):
+    def __init__(self, max_fps=60):
+        self.max_fps = max_fps
         pygame.init()
 
         pygame.display.set_caption('ninja game')
@@ -155,7 +156,7 @@ class Game:
         self.sfx['ambience'].play(-1)
         
         while True:
-            dt = self.clock.tick(60) / 1000  # dt en secondes
+            dt = self.clock.tick(self.max_fps) / 1000  # dt en secondes
             # Définir le mapping action -> int
             action_mapping = {
                 "idle": 0, "run": 1, "jump": 2, "wall_slide": 3, "slide": 4,
