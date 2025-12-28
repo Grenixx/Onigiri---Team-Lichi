@@ -37,7 +37,7 @@ def resource_path(relative_path):
 
 
 class Game:
-    def __init__(self, max_fps=60):
+    def __init__(self, max_fps=60):  
         self.max_fps = max_fps
         pygame.init()
 
@@ -411,4 +411,4 @@ class Game:
             #self.clock.tick()
 
     
-Game().run()
+#Game().run()

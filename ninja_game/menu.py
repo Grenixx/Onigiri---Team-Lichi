@@ -25,7 +25,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("Menu")
 clock = pygame.time.Clock()
 font = pygame.font.Font(FONT_NAME, FONT_SIZE)
-BACKGROUND = pygame.image.load("C:\\Users\\tiboh\\Documents\\GitHub\\PythonMultiplayerNetworking\\ninja_game\\backgroundtemp.png").convert()
+BACKGROUND = pygame.image.load("data\images\menuImage\Background\\backgroundtemp.png").convert()
 BACKGROUND_DIM = pygame.transform.smoothscale(BACKGROUND, (WIDTH, HEIGHT))
 
 def render_text(text, font, color):
