@@ -19,6 +19,10 @@ from scripts.client_network import ClientNetwork
 from scripts.controller import Controller  
 from scripts.lighting import LightingSystem
 
+###
+# TIPS POUR MOI MEME pour les bugg lier au mouvement peut etre pour etduidier le gresillement je peux retirer l offset de la camera pour voir si c est la cam 
+# le prob ou ma gestion du mouve en elle meme
+###
 
 def resource_path(relative_path):
     """Permet de trouver les fichiers quand le script est compilé en exe"""
@@ -407,4 +411,4 @@ class Game:
             #self.clock.tick()
 
     
-#Game().run()
+Game().run()

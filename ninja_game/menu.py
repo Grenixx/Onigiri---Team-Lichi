@@ -121,11 +121,16 @@ class Menu:
 
 def start_game():
     
-    max_fps = 60  
+    max_fps = 60  #vpar défaut
     monitors = get_monitors()
-    if monitors and hasattr(monitors[0], 'refresh_rate') and monitors[0].refresh_rate:
-        
-        max_fps = monitors[0].refresh_rate
+    primary_monitor = None
+
+    for m in monitors:
+        if m.x == 0 and m.y == 0: 
+            primary_monitor = m
+            break
+    if primary_monitor and hasattr(primary_monitor, 'refresh_rate') and primary_monitor.refresh_rate:
+        max_fps = primary_monitor.refresh_rate
 
     print(f"Max FPS de l'écran : {max_fps}")
     in_game = True
