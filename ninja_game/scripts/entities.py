@@ -302,6 +302,9 @@ class PurpleCircle:
         self.game = game
         self.radius = 8  # rayon du cercle pour les collisions
 
+        base_anim = self.game.assets.get(f'yokai1/idle', self.game.assets['player/idle'])
+        self.animation = base_anim.copy()
+
     def update(self):
         """
         Vérifie les collisions entre le joueur et les ennemis.
@@ -349,7 +352,12 @@ class PurpleCircle:
         for eid, (x, y) in self.game.net.enemies.items():
             screen_x = x - offset[0]
             screen_y = y - offset[1]
-            pygame.draw.circle(surf, (128, 0, 128), (int(screen_x), int(screen_y)), self.radius)
+
+            #pygame.draw.circle(surf, (128, 0, 128), (int(screen_x), int(screen_y)), self.radius)
+            
+            self.animation.update()
+            img = self.animation.img()
+            surf.blit(img, (screen_x - img.get_width()//2, screen_y - img.get_height()//2))
             self.game.tilemap.grass_manager.apply_force((x, y), 6, 12)
             
             
