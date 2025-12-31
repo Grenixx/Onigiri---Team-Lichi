@@ -9,8 +9,24 @@ class EnemyManager:
         self.enemies = {}
         self.next_enemy_id = 1
         self.players = []
-        for _ in range(num_enemies):
-            self.create_enemy([random.randint(100,250), random.randint(40,100)], "mob2")
+        self.reset(tilemap)
+
+    def reset(self, tilemap):
+        self.tilemap = tilemap
+        self.enemies.clear()
+        # Find spawners
+        spawners = getattr(self.tilemap, 'spawners', [])
+        found_spawners = False
+        for spawner in spawners:
+            if spawner['variant'] == 1: # Enemy spawner
+                self.create_enemy(spawner['pos'], "mob2")
+                found_spawners = True
+        
+        # Fallback if no spawners found? Or just 0 enemies? 
+        # For compatibility, if no spawners, maybe spawn some random ones?
+        if not found_spawners and not spawners:
+            for _ in range(20):
+                 self.create_enemy([random.randint(100,250), random.randint(40,100)], "mob2")
 
     def create_enemy(self, pos: list, enemy_type: str):
         enemy_types = {"blob": Blob, "mob2": Mob2}

@@ -163,6 +163,13 @@ class Game:
         while True:
             dt = self.clock.tick(self.max_fps) / 1000  # dt en secondes
             
+            # --- Check Server Level Change ---
+            if self.net.map_change_id is not None:
+                new_map_id = self.net.map_change_id
+                self.net.map_change_id = None
+                self.level = new_map_id
+                self.load_level(self.level)
+            
             # --- PLAYER UPDATE ---
             if not self.dead:
                 self.player.update(self.tilemap, (self.movement[1] - self.movement[0], 0),dt=dt)
@@ -306,6 +313,8 @@ class Game:
                         self.currentWeaponIndex = (self.currentWeaponIndex % len(self.weaponDictionary)) + 1
                         self.weapon_type = self.weaponDictionary[self.currentWeaponIndex]
                         self.player.weapon.set_weapon(self.weapon_type)
+                    if event.key == pygame.K_n:
+                        self.net.send_map_change_request()
                 # Si une touche est relâchée
                 if event.type == pygame.KEYUP or event.type == pygame.K_SPACE:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_q:

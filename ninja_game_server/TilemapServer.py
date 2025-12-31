@@ -14,6 +14,12 @@ class TilemapServer:
         
         self.tilemap = map_data['tilemap']
         self.tile_size = map_data['tile_size']
+        
+        self.spawners = []
+        if 'offgrid' in map_data:
+            for item in map_data['offgrid']:
+                if item['type'] == 'spawners':
+                    self.spawners.append(item)
 
     def solid_check(self, pos):
         """Vérifie si une position est dans une tuile solide."""

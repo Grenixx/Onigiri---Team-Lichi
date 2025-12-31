@@ -71,7 +71,8 @@ class GameServer:
 
         # --- Charger la map ---
         self.map = TilemapServer()
-        self.map.load("data/maps/1.json")
+        self.map_id = 1
+        self.map.load(f"data/maps/{self.map_id}.json")
         print("carte chargée sur le serveur.")
 
         # --- Managers ---
@@ -162,18 +163,70 @@ class GameServer:
                 del self.EnemyManager.enemies[eid]
             return
 
+        # --- Request Level Change (Debug) ---
+        if msg_type == 5:
+            next_map = int(self.map_id) + 1
+            # Simple loop back if file not found logic is handled in change_level? 
+            # Actually change_level just prints and returns. 
+            # We can try to cycle if we want, but 'next' implies +1.
+            # Let's try to load, if it fails maybe go back to 0?
+            # For now, just try next.
+            self.change_level(next_map)
+            return
+
     # ---------------------------
     # --- Mises à jour ---
     # ---------------------------
     def update_world(self):
         self.EnemyManager.update(self.players.players)
+        
+        # Example condition de changement de map automatique (tous les ennemis morts)
+        # if len(self.EnemyManager.enemies) == 0:
+        #     # cycle maps 0 -> 1 -> ...
+        #     current_level = int(self.map_id) if hasattr(self, 'map_id') else 0
+        #     self.change_level(current_level + 1)
+
         self.broadcast_state()
+
+    def change_level(self, map_id):
+        try:
+            filename = f"data/maps/{map_id}.json"
+            self.map.load(filename)
+            self.map_id = map_id
+        except FileNotFoundError:
+            print(f"Map {map_id} not found!")
+            return
+
+        print(f"Map changée vers {map_id}")
+        self.EnemyManager.reset(self.map)
+        
+        # Reset players (Spawn au spawn point si disponible)
+        spawn_pos = (50, 50)
+        if hasattr(self.map, 'spawners'):
+            for s in self.map.spawners:
+                if s['variant'] == 0: # Player spawn
+                    spawn_pos = s['pos']
+                    break
+        
+        for pid in self.players.players:
+            _, _, a, f = self.players.players[pid]
+            self.players.players[pid] = (spawn_pos[0], spawn_pos[1], a, f)
+
+        self.broadcast_map_change(map_id)
+
+    def broadcast_map_change(self, map_id):
+        # Type 4 : Changement de map
+        payload = struct.pack("<BI", 4, int(map_id))
+        for addr in self.players.clients:
+            self.sock.sendto(payload, addr)
 
     # ---------------------------
     # --- Envoi aux clients ---
     # ---------------------------
     def broadcast_state(self):
-        payload = struct.pack("B", len(self.players.players))
+        # Type 2 : Update World
+        # On préfixe avec \x02
+        payload = struct.pack("BB", 2, len(self.players.players))
         for pid, (x, y, action, flip) in self.players.players.items():
             action_bytes = action.encode('utf-8')[:15]
             action_bytes += b'\x00' * (15 - len(action_bytes))

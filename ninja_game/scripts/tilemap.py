@@ -93,6 +93,10 @@ class Tilemap:
         self.offgrid_tiles = map_data['offgrid']
 
         # 🌿 AJOUT — générer l’herbe après chargement
+        # On vide l'herbe précédente
+        if hasattr(self.grass_manager, 'grass_tiles'):
+            self.grass_manager.grass_tiles.clear() # Try clear if list/dict
+            
         self.generate_grass()
         
         
