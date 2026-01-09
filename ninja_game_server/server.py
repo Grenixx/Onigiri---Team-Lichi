@@ -173,9 +173,9 @@ class GameServer:
         self.EnemyManager.update(self.players.players)
         
         # Example condition de changement de map automatique (tous les ennemis morts)
-        if len(self.EnemyManager.enemies) == 0:
-            next_map = int((self.map_id) + 1) % len(os.listdir("data/maps")) #modulo nombre de map dans le fichier
-            self.change_level(next_map)
+        #if len(self.EnemyManager.enemies) == 0:
+        #    next_map = int((self.map_id) + 1) % len(os.listdir("data/maps")) #modulo nombre de map dans le fichier
+        #    self.change_level(next_map)
 
         self.broadcast_state()
 
