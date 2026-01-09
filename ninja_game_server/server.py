@@ -2,6 +2,7 @@ import socket
 import struct
 import time
 import miniupnpc
+import os #pour listdir les level les faire looper entre eux
 
 from TilemapServer import TilemapServer
 from enemy_manager import Blob, EnemyManager
@@ -161,7 +162,7 @@ class GameServer:
 
         # --- Request Level Change (Debug) ---
         if msg_type == 5:
-            next_map = int(self.map_id) + 1 #modulo nombre de map dans le fichier
+            next_map = int((self.map_id) + 1) % len(os.listdir("data/maps")) #modulo nombre de map dans le fichier
             self.change_level(next_map)
             return
 
