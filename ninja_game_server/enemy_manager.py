@@ -162,7 +162,7 @@ class Blob(Enemy):
         self.properties['vx'] = velocity[0]
         self.properties['vy'] = velocity[1]
 
-VISION_DISTANCE_MOB2 = 16*6
+VISION_DISTANCE_MOB2 = 16*8
 DIST_WANDER = 8
 MIN_WANDER_DIST = 2
 MIN_WANDER_SPEED = 1.5
