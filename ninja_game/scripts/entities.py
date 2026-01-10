@@ -323,7 +323,7 @@ class PurpleCircle:
         weapon_rect = player.weapon.weapon_equiped.rect()
 
         
-        for eid, (ex, ey) in list(self.game.net.enemies.items()):
+        for eid, (ex, ey, flip) in list(self.game.net.enemies.items()):
             enemy_rect = pygame.Rect(ex - self.radius, ey - self.radius, self.radius * 2, self.radius * 2)
             
             # Condition 1: Le joueur en dash touche l'ennemi
