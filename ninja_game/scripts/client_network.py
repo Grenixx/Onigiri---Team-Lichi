@@ -92,10 +92,10 @@ class ClientNetwork:
                         offset += 1
                         new_enemies = {}
                         for _ in range(enemy_count):
-                            if len(data) >= offset + 12:
-                                eid, x, y = struct.unpack("Iff", data[offset:offset+12])
-                                new_enemies[eid] = (x, y)
-                                offset += 12
+                            if len(data) >= offset + 13:
+                                eid, x, y, flip = struct.unpack("Iff?", data[offset:offset+13])
+                                new_enemies[eid] = (x, y, flip)
+                                offset += 13
                         self.enemies = new_enemies
                     continue
 

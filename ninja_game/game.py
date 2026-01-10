@@ -137,22 +137,17 @@ class Game:
         self.debug = True
 
     def set_zoom(self, zoom_value):
-        # Clamp zoom to reasonable values
         self.zoom = max(0.5, min(zoom_value, 2.0))
         
-        # Calculate new resolution
         new_width = int(self.base_resolution[0] / self.zoom)
         new_height = int(self.base_resolution[1] / self.zoom)
         SCALE = (new_width, new_height)
         
-        # Recreate surfaces
         self.display = pygame.Surface(SCALE, pygame.SRCALPHA)
         self.display_2 = pygame.Surface(SCALE)
         
-        # Resize subsystems
         self.shader_bg.resize(SCALE[0], SCALE[1])
-        # LightingSystem doesn't have a resize method but uses .size property during render if we update it?
-        # Looking at lighting.py: render creates a surface of self.size. So we update self.lighting.size
+
         self.lighting.size = SCALE
 
     def load_level(self, map_id):
@@ -198,7 +193,6 @@ class Game:
             if not self.dead:
                 self.player.update(self.tilemap, (self.movement[1] - self.movement[0], 0),dt=dt)
 
-            # Définir le mapping action -> int
             action_mapping = {
                 "idle": 0, "run": 1, "jump": 2, "wall_slide": 3, "slide": 4,
                 # Ajout des actions d'attaque
@@ -215,12 +209,9 @@ class Game:
             self.scroll[1] += (self.player.rect().centery - self.display.get_height() / 2 - self.scroll[1]) #/5 # smooth cam
             render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
 
-            # mettre à jour les autres joueurs
-            #self.remote_players = self.net.players
             self.remote_players = self.net.remote_players
 
             self.display.fill((0, 0, 0, 0))
-            # scroll = position de la caméra
             # --- BACKGROUND ---
             shader_surface = self.shader_bg.render(camera=(render_scroll[0] * 0.2, render_scroll[1] * -0.2))
             self.display_2.blit(shader_surface, (0, 0))
@@ -228,9 +219,7 @@ class Game:
 
 
             self.screenshake = max(0, self.screenshake - 1)
-            
-            # Les ennemis sont maintenant gérés par le serveur
-            # Plus de vérification de transition basée sur les ennemis
+
             if self.transition < 0:
                 self.transition += 1
             
@@ -355,7 +344,7 @@ class Game:
                         self.movement[0] = False
                     if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                         self.movement[1] = False
-                    # Si on relâche une touche directionnelle, on réinitialise la variable
+                    # Si on relâche une touche directionnelle on reinit la variable
                     if event.key in [pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_d, pygame.K_a, pygame.K_SPACE, pygame.K_s]:
                         self.player.is_pressed = None
                 # Si un bouton de la souris est pressé
@@ -372,7 +361,7 @@ class Game:
                         elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
                             direction = 'right'
                         else:
-                            direction = None  # aucune direction active
+                            direction = None  
 
                         self.player.attack(direction)
 

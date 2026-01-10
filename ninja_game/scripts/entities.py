@@ -353,15 +353,15 @@ class PurpleCircle:
         #surf.blit(pygame.transform.flip(self.animation.img(), self.flip, False),
         #          (self.pos[0] - offset[0] + self.anim_offset[0],
         #           self.pos[1] - offset[1] + self.anim_offset[1]))
-        for eid, (x, y) in self.game.net.enemies.items():
+        for eid, (x, y, flip) in self.game.net.enemies.items():
             screen_x = x - offset[0]
             screen_y = y - offset[1]
 
             #pygame.draw.circle(surf, (128, 0, 128), (int(screen_x), int(screen_y)), self.radius)
             
             self.animation.update()
-            img = self.animation.img()
-            surf.blit(img, (screen_x - img.get_width()//2, screen_y - img.get_height()//2))
+            imgAnim = self.animation.img()
+            surf.blit(pygame.transform.flip(imgAnim, flip, False), (screen_x - imgAnim.get_width()//2, screen_y - imgAnim.get_height()//2))
             self.game.tilemap.grass_manager.apply_force((x, y), 6, 12)
             
             
