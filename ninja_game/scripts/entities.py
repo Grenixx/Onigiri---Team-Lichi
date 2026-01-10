@@ -136,7 +136,7 @@ class Player(PhysicsEntity):
         self.weapon.weapon_equiped.update()
         self.jump_buffer_timer = max(0, self.jump_buffer_timer - dt)
 
-        if self.air_time > 5:
+        if self.air_time > 2 :
             if not self.game.dead:
                 self.game.screenshake = max(16, self.game.screenshake)
             self.game.dead += 1
@@ -188,25 +188,20 @@ class Player(PhysicsEntity):
             self.dashing = min(0, self.dashing + dt)
 
             
-                # Particules de début et de fin de dash
         dash_progress = abs(self.dashing) / self.dash_duration
-        if dash_progress > 0.9 or (dash_progress < 0.1 and self.dashing != 0):
-            for i in range(20):
-                angle = random.random() * math.pi * 2
-                speed = random.random() * 0.5 + 0.5
-                pvelocity = [math.cos(angle) * speed, math.sin(angle) * speed]
-                self.game.particles.append(Particle(self.game, 'particle',
-                                                    self.rect().center,
-                                                    velocity=pvelocity,
-                                                    frame=random.randint(0, 7)))
+        # Particules de début et de fin de dash
+        #if dash_progress > 0.9 or (dash_progress < 0.1 and self.dashing != 0):
+        #    for i in range(20):
+        #        angle = random.random() * math.pi * 2
+        #        speed = random.random() * 0.5 + 0.5
+        #        pvelocity = [math.cos(angle) * speed, math.sin(angle) * speed]
+        #        self.game.particles.append(Particle(self.game, 'particle',
+        #                                           self.rect().center,
+        #                                           velocity=pvelocity,
+        #                                           frame=random.randint(0, 7)))
 
-        # Pendant le dash, on donne une vélocité horizontale
         if self.dashing != 0:
-            # La vélocité est de 8 pixels/frame ? Non, nous sommes en pixels/seconde.
-            # 8 pixels/frame à 60 FPS = 480 pixels/seconde.
-              # pixels/seconde
             self.velocity[0] = self.dash_speed if self.dashing > 0 else -self.dash_speed
-            # Au tout début du dash, on réduit un peu la vélocité pour un effet
             if dash_progress > 0.9:
                 self.velocity[0] *= 0.1
                 
@@ -311,12 +306,22 @@ class PurpleCircle:
         Si le joueur est en dash et touche un ennemi, on le supprime.
         """
         player = self.game.player
-        player_center = player.rect().center
-        is_dashing = abs(self.game.player.dashing) > 50
         is_attacking = player.weapon.weapon_equiped.attack_timer > 0
-        
+
+        for eid, (ex, ey, flip) in list(self.game.net.enemies.items()):
+            player = self.game.player
+            player_col = player.rect()
+
+
+            enemy_rect = pygame.Rect(ex - self.radius, ey - self.radius, self.radius * 2, self.radius * 2)
+            
+            if player_col.colliderect(enemy_rect) == True:
+                if not self.game.dead:
+                    self.game.screenshake = max(16, self.game.screenshake)
+                self.game.dead += 1
+
         # Si aucune action offensive n'est en cours, on ne fait rien.
-        if not is_dashing and not is_attacking:
+        if not is_attacking:
             return
             
         to_remove = []
@@ -325,18 +330,17 @@ class PurpleCircle:
         
         for eid, (ex, ey, flip) in list(self.game.net.enemies.items()):
             enemy_rect = pygame.Rect(ex - self.radius, ey - self.radius, self.radius * 2, self.radius * 2)
+            # JE RETIRE LE DASH QUI TUE
+            #hit_by_dash = False
+            #if is_dashing:
+            #    dx, dy = ex - player_center[0], ey - player_center[1]
+            #    if (dx*dx + dy*dy) < (self.radius + 10)**2: # Plus rapide que sqrt
+            #        hit_by_dash = True
             
-            # Condition 1: Le joueur en dash touche l'ennemi
-            hit_by_dash = False
-            if is_dashing:
-                dx, dy = ex - player_center[0], ey - player_center[1]
-                if (dx*dx + dy*dy) < (self.radius + 10)**2: # Plus rapide que sqrt
-                    hit_by_dash = True
-            
-            # Condition 2: L'arme en mouvement touche l'ennemi
+            # L'arme en mouvement touche l'ennemi
             hit_by_weapon = is_attacking and weapon_rect.colliderect(enemy_rect)
 
-            if hit_by_dash or hit_by_weapon:
+            if hit_by_weapon:
                 to_remove.append(eid)
 
         for eid in to_remove:
