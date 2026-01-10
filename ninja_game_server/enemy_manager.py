@@ -44,6 +44,7 @@ class Enemy:
             'vx': 0.0,
             'vy': 0.0,
             'target_player': None,
+            'flip': False,
         }
         self.enemy_manager = enemy_manager
         self.speed = speed
@@ -163,7 +164,9 @@ class Blob(Enemy):
 
 VISION_DISTANCE_MOB2 = 16*6
 DIST_WANDER = 8
-MIN_DIST_WANDER = 2
+MIN_WANDER_DIST = 2
+MIN_WANDER_SPEED = 1.5
+WANDER_SPEED_DECAY = 0.01
 
 class Mob2(Enemy):
     def __init__(self, eid, pos, enemy_manager):
@@ -173,22 +176,32 @@ class Mob2(Enemy):
         self.wander_pos = []
         self.wander_angle = None
         self.wander_dist = None
+        self.wander_speed = self.speed
     
-    def create_wander_pos(self):
+    def create_wander_pos(self, hit_result = [False, False]):
         if self.wander_angle == None:
             self.wander_angle = angle([self.properties['vx'], self.properties['vy']])
         else:
             self.wander_angle += random.uniform(-pi/6, pi/6)
+            self.wander_angle = angle_modulo(self.wander_angle)
         
         if self.wander_dist == None:
             self.wander_dist = random.uniform(DIST_WANDER//2, DIST_WANDER)
         else:
-            self.wander_dist = max(self.wander_dist + random.uniform(-DIST_WANDER//4, DIST_WANDER//4), MIN_DIST_WANDER)
+            self.wander_dist = max(self.wander_dist + random.uniform(-DIST_WANDER//4, DIST_WANDER//4), MIN_WANDER_DIST)
         
         #self.wander_pos = [self.properties['x'] + random.choice((-1, 1)) * dist, self.properties['y'] + random.randint(int(-dist), int(dist))]
-        if self.does_collide(add_vecs(vec_from_angle(4, self.wander_angle), [self.properties['x'], self.properties['y']])) != [False, False]:
-            self.wander_angle -= pi
         
+        if hit_result[0] and not hit_result[1]: # round angle to -pi/2 or pi/2
+            if self.wander_angle >= 0 and self.wander_angle <= pi:
+                self.wander_angle = pi/2
+            else:
+                self.wander_angle = -pi/2
+        elif hit_result[1] and not hit_result[0]: # round angle to 0 or pi
+            if self.wander_angle >= -pi/2 and self.wander_angle <= pi/2:
+                self.wander_angle = 0
+            else:
+                self.wander_angle = pi
         self.wander_pos = add_vecs(vec_from_angle(self.wander_dist, self.wander_angle), [self.properties['x'], self.properties['y']])
         #print(self.wander_pos, self.properties['x'], self.properties['y'])
         #print(f"dist : {self.wander_dist}")
@@ -224,12 +237,14 @@ class Mob2(Enemy):
             #print(distane_to(self.wander_pos, pos))
             if distane_to(self.wander_pos, pos) > 1:
                 velocity = normalized(vector_to(pos, self.wander_pos))
-                velocity = [i * self.speed / 2 for i in velocity]
-                new_x = pos[0] + velocity[0] # * delta
-                new_y = pos[1] + velocity[1] # * delta
-                if tilemap.solid_check((new_x, new_y)): # encountered a wall
+                self.wander_speed = max(self.wander_speed - WANDER_SPEED_DECAY, MIN_WANDER_SPEED) # * delta
+                velocity = [i * self.wander_speed for i in velocity]
+                new_x = pos[0] + velocity[0] * 3 # * delta
+                new_y = pos[1] + velocity[1] * 3 # * delta
+                hit_result = self.does_collide([new_x, new_y])
+                if hit_result != [False, False]: # encountered a wall
                     #print(f"{self.eid} encountered a wall")
-                    self.create_wander_pos()
+                    self.create_wander_pos(hit_result)
                     velocity = [0,0]
             else: # reached wander pos
                 #print(f"{self.eid} reached wander pos")
@@ -237,6 +252,19 @@ class Mob2(Enemy):
             
         
         self.move_and_slide(velocity, delta)
+
+        # --- For animations --- 
+
+        if closest_pid:
+            if self.properties['vx'] < 0:
+                self.properties['flip'] = True
+            else:
+                self.properties['flip'] = False
+        else:
+            if self.properties['flip'] and self.wander_angle > -pi/3 and self.wander_angle < pi/3:
+                self.properties['flip'] = False
+            elif (not self.properties['flip']) and (self.wander_angle < -2*pi/3 or self.wander_angle > 2*pi/3):
+                self.properties['flip'] = True
 
         players_last_pos = {}
         for pid in players.keys():
@@ -312,6 +340,13 @@ def angle(vec: list):
             return ay
         return -ax
     return ax
+
+def angle_modulo(angle: float) -> float:
+    if angle > pi:
+        angle -= pi
+    elif angle < -pi:
+        angle += pi
+    return angle
 
 def is_within(pos, pos1, pos2):
     pos_r1 = [pos1[i] <= pos[i] and pos2[i] >= pos[i] for i in range(2)]
