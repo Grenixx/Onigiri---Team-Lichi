@@ -20,6 +20,15 @@ class TilemapServer:
             for item in map_data['offgrid']:
                 if item['type'] == 'spawners':
                     self.spawners.append(item)
+                    
+        # Check grid tiles for spawners
+        for loc, tile in self.tilemap.items():
+            if tile['type'] == 'spawners':
+                # Create a copy to not modify the original tile data in place if we were to save it back
+                spawner = tile.copy()
+                # Grid pos to pixel pos
+                spawner['pos'] = [tile['pos'][0] * self.tile_size, tile['pos'][1] * self.tile_size]
+                self.spawners.append(spawner)
 
     def solid_check(self, pos):
         """Vérifie si une position est dans une tuile solide."""

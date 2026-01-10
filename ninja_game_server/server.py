@@ -66,7 +66,7 @@ class GameServer:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((ip, port))
 
-
+        self.next_map = 0
 
         # --- Charger la map ---
         self.map = TilemapServer()
@@ -162,8 +162,8 @@ class GameServer:
 
         # --- Request Level Change (Debug) ---
         if msg_type == 5:
-            next_map = int((self.map_id) + 1) % len(os.listdir("data/maps")) #modulo nombre de map dans le fichier
-            self.change_level(next_map)
+            self.next_map = int((self.map_id) + 1) % len(os.listdir("data/maps")) #modulo nombre de map dans le fichier
+            self.change_level(self.next_map)
             return
 
     # ---------------------------
@@ -174,8 +174,8 @@ class GameServer:
         
         # Example condition de changement de map automatique (tous les ennemis morts)
         #if len(self.EnemyManager.enemies) == 0:
-        #    next_map = int((self.map_id) + 1) % len(os.listdir("data/maps")) #modulo nombre de map dans le fichier
-        #    self.change_level(next_map)
+        #    self.next_map = int((self.map_id) + 1) % len(os.listdir("data/maps")) #modulo nombre de map dans le fichier
+        #    self.change_level(self.next_map)
 
         self.broadcast_state()
 
