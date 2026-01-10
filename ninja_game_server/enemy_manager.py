@@ -49,6 +49,7 @@ class Enemy:
         }
         self.enemy_manager = enemy_manager
         self.speed = speed
+        self.spawn_position = pos
         print(f"ennemi créé en {pos} !")
     def can_see_player(self, player):
         return not raycast_collide([self.properties['x'], self.properties['y']],
@@ -60,6 +61,32 @@ class Enemy:
                                     )
     def create_enemy(self, pos: list, enemy_type: str):
         self.enemy_manager.create_enemy(pos, enemy_type)
+
+    def does_collide(self,new_pos: list) -> list:
+        """
+        Renvoie si le mob va avoir une collision à la prochaine frame sous forme de tableau de booléens
+        [False,True]: collision en y
+        """
+        res = [False, False]
+        if self.enemy_manager.tilemap.solid_check((new_pos[0], self.properties['y'])):
+            res[0] = True
+        if self.enemy_manager.tilemap.solid_check((self.properties['x'], new_pos[1])):
+            res[1] = True
+        return res
+
+    def move_and_slide(self, velocity: list, delta: float) -> None:
+        self.properties['vx'] = velocity[0] # * delta
+        self.properties['vy'] = velocity[1] # * delta
+        new_pos = [self.properties['x'] + self.properties['vx'], self.properties['y'] + self.properties['vy']]
+        collision = self.does_collide(new_pos)
+        if collision[0]:
+            self.properties['vx'] = 0
+        else:
+            self.properties['x'] = new_pos[0]
+        if collision[1]:
+            self.properties['vy'] = 0
+        else:
+            self.properties['y'] = new_pos[1]
 
     def damage():
         pass
@@ -136,16 +163,41 @@ class Blob(Enemy):
         self.properties['vx'] = velocity[0]
         self.properties['vy'] = velocity[1]
 
+VISION_DISTANCE_MOB2 = 16*6
+DIST_WANDER = 8
+MIN_DIST_WANDER = 2
+
 class Mob2(Enemy):
     def __init__(self, eid, pos, enemy_manager):
-        super().__init__(eid, pos, enemy_manager, 1.5)
+        super().__init__(eid, pos, enemy_manager, 1.5 * 1.5)
         self.properties['type'] = "mob2"
         self.players_last_pos = {}
         self.wander_pos = []
+        self.wander_angle = None
+        self.wander_dist = None
     
+    def create_wander_pos(self):
+        if self.wander_angle == None:
+            self.wander_angle = angle([self.properties['vx'], self.properties['vy']])
+        else:
+            self.wander_angle += random.uniform(-pi/6, pi/6)
+        
+        if self.wander_dist == None:
+            self.wander_dist = random.uniform(DIST_WANDER//2, DIST_WANDER)
+        else:
+            self.wander_dist = max(self.wander_dist + random.uniform(-DIST_WANDER//4, DIST_WANDER//4), MIN_DIST_WANDER)
+        
+        #self.wander_pos = [self.properties['x'] + random.choice((-1, 1)) * dist, self.properties['y'] + random.randint(int(-dist), int(dist))]
+        if self.does_collide(add_vecs(vec_from_angle(4, self.wander_angle), [self.properties['x'], self.properties['y']])) != [False, False]:
+            self.wander_angle -= pi
+        
+        self.wander_pos = add_vecs(vec_from_angle(self.wander_dist, self.wander_angle), [self.properties['x'], self.properties['y']])
+        #print(self.wander_pos, self.properties['x'], self.properties['y'])
+        #print(f"dist : {self.wander_dist}")
+        #print(f"angle : {self.wander_angle}")
+
     def physics_process(self, delta: float):
         pos = [self.properties['x'], self.properties['y']]
-        velocity = [self.properties['vx'], self.properties['vy']]
         players = self.enemy_manager.players
         tilemap = self.enemy_manager.tilemap
         
@@ -158,47 +210,41 @@ class Mob2(Enemy):
                 if closest_dist == None or closest_dist > dist:
                     closest_dist,closest_pid = dist,pid
         
-        dist_to_closest = -1
-        if closest_dist:
-            dist_to_closest = distane_to(pos, self.players_last_pos[closest_pid])
-        if dist_to_closest < 16*30 and dist_to_closest > 1:
+        velocity = [0,0]
+        if closest_pid: # if has target
+            self.wander_angle = None
+            self.wander_dist = None
+            self.wander_pos = None
             self.properties['target_player'] = closest_pid
-            step = [0,0]
-            dist = distane_to(pos, players[closest_pid])
+            dist = distane_to(pos, self.players_last_pos[closest_pid])
             if dist > 1:
-                step = normalized(vector_to(pos, players[closest_pid]))
-                step = [i * self.speed for i in step]
-
-            # --- Test collisions map ---
-            new_x = pos[0] + step[0]
-            new_y = pos[1] + step[1] + velocity[1]
-
-            if not tilemap.solid_check((new_x, pos[1])):
-                velocity[0] = step[0]
-            else:
-                velocity[0] = 0
-
-            if not tilemap.solid_check((pos[0], new_y)):
-                velocity[1] = step[1]
-            else:
-                velocity[1] = 0
-
-            # Limites de la map
-
+                velocity = normalized(vector_to(pos, self.players_last_pos[closest_pid]))
+                velocity = [i * self.speed for i in velocity]
         else:
-            pass
-            #if distane_to(self.wander_pos, pos) > 1:
-                
-        pos[0] = max(0, min(pos[0] + velocity[0], 1000))
-        pos[1] = max(0, min(pos[1] + velocity[1], 1000))
-        self.properties['x'] = pos[0]
-        self.properties['y'] = pos[1]
-        self.properties['vx'] = velocity[0]
-        self.properties['vy'] = velocity[1]
+            if not self.wander_pos:
+                self.create_wander_pos()
+            #print(distane_to(self.wander_pos, pos))
+            if distane_to(self.wander_pos, pos) > 1:
+                velocity = normalized(vector_to(pos, self.wander_pos))
+                velocity = [i * self.speed / 2 for i in velocity]
+                new_x = pos[0] + velocity[0] # * delta
+                new_y = pos[1] + velocity[1] # * delta
+                if tilemap.solid_check((new_x, new_y)): # encountered a wall
+                    #print(f"{self.eid} encountered a wall")
+                    self.create_wander_pos()
+                    velocity = [0,0]
+            else: # reached wander pos
+                #print(f"{self.eid} reached wander pos")
+                self.create_wander_pos()
+            
+        
+        self.move_and_slide(velocity, delta)
+
         players_last_pos = {}
         for pid in players.keys():
             if self.can_see_player(players[pid]):
-                players_last_pos[pid] = [players[pid][0],players[pid][1]]
+                if distane_to(players[pid], pos) < VISION_DISTANCE_MOB2 and distane_to(players[pid], pos) > 1:
+                    players_last_pos[pid] = [players[pid][0],players[pid][1]]
             else:
                 if pid in self.players_last_pos.keys():
                     players_last_pos[pid] = self.players_last_pos[pid]
