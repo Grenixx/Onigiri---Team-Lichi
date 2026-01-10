@@ -56,3 +56,10 @@ class ShaderBackground:
         data = self.fbo.read(components=3)
         image = pygame.image.frombuffer(data, (self.width, self.height), "RGB")
         return pygame.transform.flip(image, False, True)
+
+    def resize(self, width, height):
+        self.width = width
+        self.height = height
+        self.fbo.release()
+        self.fbo = self.ctx.simple_framebuffer((width, height))
+        self.fbo.use()

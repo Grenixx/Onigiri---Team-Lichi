@@ -47,8 +47,12 @@ class Game:
             if m.is_primary:
                 monitor = m
         print(f"Initialising game with width: {monitor.width} and height: {monitor.height}")
-        SCALE = (320*2,180*2)
         self.screen = pygame.display.set_mode((monitor.width, monitor.height))
+        
+        self.base_resolution = (320*2, 180*2)
+        self.zoom = 1.0
+        SCALE = self.base_resolution
+        
         self.display = pygame.Surface(SCALE, pygame.SRCALPHA)
         self.display_2 = pygame.Surface(SCALE)
 
@@ -131,6 +135,25 @@ class Game:
 
         self.font = pygame.font.SysFont("consolas", 16)
         self.debug = True
+
+    def set_zoom(self, zoom_value):
+        # Clamp zoom to reasonable values
+        self.zoom = max(0.5, min(zoom_value, 2.0))
+        
+        # Calculate new resolution
+        new_width = int(self.base_resolution[0] / self.zoom)
+        new_height = int(self.base_resolution[1] / self.zoom)
+        SCALE = (new_width, new_height)
+        
+        # Recreate surfaces
+        self.display = pygame.Surface(SCALE, pygame.SRCALPHA)
+        self.display_2 = pygame.Surface(SCALE)
+        
+        # Resize subsystems
+        self.shader_bg.resize(SCALE[0], SCALE[1])
+        # LightingSystem doesn't have a resize method but uses .size property during render if we update it?
+        # Looking at lighting.py: render creates a surface of self.size. So we update self.lighting.size
+        self.lighting.size = SCALE
 
     def load_level(self, map_id):
         self.tilemap.load('data/maps/' + str(map_id) + '.json')
@@ -318,6 +341,13 @@ class Game:
                         self.net.send_map_change_request()
 
                     # Zoom dezoom :D
+                    if event.key == pygame.K_KP_PLUS or event.key == pygame.K_PLUS:
+                         self.set_zoom(self.zoom + 0.1)
+                    if event.key == pygame.K_KP_MINUS or event.key == pygame.K_MINUS:
+                         self.set_zoom(self.zoom - 0.1)
+                            
+                if event.type == pygame.MOUSEWHEEL:
+                    self.set_zoom(self.zoom + event.y * 0.1)
 
                 # Si une touche est relâchée
                 if event.type == pygame.KEYUP or event.type == pygame.K_SPACE:
