@@ -38,19 +38,26 @@ class Animation:
         self.loop = loop
         self.img_duration = img_dur
         self.done = False
-        self.frame = 0
+        self.frame = 0 
     
     def copy(self):
         return Animation(self.images, self.img_duration, self.loop)
 
-    def update(self, dt =1):
-        self.img_duration * dt
+    def update(self, dt=None):
+        speed = dt * 60 if dt is not None else 1
+        
+        self.frame += speed
+        
+        total_duration = self.img_duration * len(self.images)
+        
         if self.loop:
-            self.frame = (self.frame + 1) % (self.img_duration * len(self.images))
+            self.frame = self.frame % total_duration
         else:
-            self.frame = min(self.frame + 1, self.img_duration * len(self.images) - 1)
-            if self.frame >= self.img_duration * len(self.images) - 1:
+            if self.frame >= total_duration:
+                self.frame = total_duration - 0.01
                 self.done = True
     
     def img(self):
-        return self.images[int(self.frame / self.img_duration)]
+        index = int(self.frame / self.img_duration)
+        index = max(0, min(index, len(self.images) - 1))
+        return self.images[index]
