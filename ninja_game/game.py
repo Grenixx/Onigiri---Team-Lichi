@@ -246,7 +246,7 @@ class Game:
 
             # --- ENEMIES ---
             self.enemies_renderer.update()
-            self.enemies_renderer.render(self.display, offset=render_scroll)
+            self.enemies_renderer.render(self.display, offset=render_scroll, dt=dt)
 
             # --- PLAYER RENDER ---
             if not self.dead:
@@ -291,7 +291,7 @@ class Game:
                     self.particles.remove(particle)
 
             # --- REMOTE PLAYERS ---
-            self.remote_players_renderer.render(self.display, offset=render_scroll)
+            self.remote_players_renderer.render(self.display, offset=render_scroll, dt=dt)
 
             self.display_2.blit(self.display, (0, 0))
 

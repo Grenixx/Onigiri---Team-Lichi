@@ -83,7 +83,7 @@ class PhysicsEntity:
         if self.collisions['down'] or self.collisions['up']:
             self.velocity[1] = 0
             
-        self.animation.update()
+        self.animation.update(dt)
         #self.pos[0] = round(self.pos[0])
         #self.pos[1] = round(self.pos[1])
         
@@ -353,7 +353,7 @@ class PurpleCircle:
             self.game.net.remove_enemy(eid)
         
 
-    def render(self, surf, offset=(0, 0)):
+    def render(self, surf, offset=(0, 0), dt=1):
         """Affiche les ennemis ronds violets à l’écran."""
 
         #surf.blit(pygame.transform.flip(self.animation.img(), self.flip, False),
@@ -365,7 +365,7 @@ class PurpleCircle:
 
             #pygame.draw.circle(surf, (128, 0, 128), (int(screen_x), int(screen_y)), self.radius)
             
-            self.animation.update()
+            self.animation.update(dt)
             imgAnim = self.animation.img()
             surf.blit(pygame.transform.flip(imgAnim, flip, False), (screen_x - imgAnim.get_width()//2, screen_y - imgAnim.get_height()//2))
             self.game.tilemap.grass_manager.apply_force((x, y), 6, 12)
@@ -390,11 +390,11 @@ class RemotePlayerRenderer:
             base_anim = self.game.assets.get(f'player/{action}', self.game.assets['player/idle'])
             self.animation = base_anim.copy()
 
-        def update(self, pos, action, flip):
+        def update(self, pos, action, flip, dt=1):
             self.pos = list(pos)
             self.flip = flip
             self.set_action(action)
-            self.animation.update()
+            self.animation.update(dt)
 
         def render(self, surf, offset=(0,0)):
             img = pygame.transform.flip(self.animation.img(), self.flip, False)
@@ -405,7 +405,7 @@ class RemotePlayerRenderer:
         self.game = game
         self.players = {}  # pid -> RemotePlayer
 
-    def render(self, surf, offset=(0,0)):
+    def render(self, surf, offset=(0,0), dt=1):
         for pid, data in self.game.remote_players.items():
             if pid == self.game.net.id:
                 continue
@@ -421,7 +421,7 @@ class RemotePlayerRenderer:
             if pid not in self.players:
                 self.players[pid] = self.RemotePlayer(self.game, pid, (x,y), action, flip)
 
-            self.players[pid].update((x,y), action, flip)
+            self.players[pid].update((x,y), action, flip, dt)
             self.players[pid].render(surf, offset)
 
 

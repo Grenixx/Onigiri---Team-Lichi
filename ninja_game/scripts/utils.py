@@ -42,8 +42,9 @@ class Animation:
     
     def copy(self):
         return Animation(self.images, self.img_duration, self.loop)
-    
-    def update(self):
+
+    def update(self, dt =1):
+        self.img_duration * dt
         if self.loop:
             self.frame = (self.frame + 1) % (self.img_duration * len(self.images))
         else:
