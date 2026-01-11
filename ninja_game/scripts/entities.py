@@ -133,7 +133,7 @@ class Player(PhysicsEntity):
             self.air_time += dt  # dt est en secondes
 
         
-        self.weapon.weapon_equiped.update()
+        self.weapon.weapon_equiped.update(dt)
         self.jump_buffer_timer = max(0, self.jump_buffer_timer - dt)
 
         if self.air_time > 2 :

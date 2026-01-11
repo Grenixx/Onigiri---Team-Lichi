@@ -77,10 +77,15 @@ class WeaponBase:
     # ------------------------
     # Update
     # ------------------------
-    def update(self):
+    def update(self, dt=1):
         if self.attack_timer > 0:
-            self.attack_timer -= 1
-            self.animation.update()
+            speed = dt * 60 if dt is not None else 1
+            self.attack_timer -= speed
+            self.animation.update(dt)
+            
+            # Sécurité : si l'animation dit qu'elle est finie, on coupe le timer
+            if self.animation.done:
+                self.attack_timer = 0
 
     # ------------------------
     # Swing / attaque
@@ -97,6 +102,7 @@ class WeaponBase:
         self.attack_direction = direction
         self.attack_timer = len(self.animation.images) * self.animation.img_duration
         self.animation.frame = 0
+        self.animation.done = False 
 
     # ------------------------
     # Obtenir image (avec rotation et flip)
