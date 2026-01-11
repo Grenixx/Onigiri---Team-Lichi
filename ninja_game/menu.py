@@ -5,7 +5,17 @@ import pygame
 from game import Game
 
 pygame.init()
-WIDTH, HEIGHT = 1920, 1080
+
+from screeninfo import get_monitors
+
+monitors = get_monitors()
+for m in monitors:
+    if m.is_primary:
+        monitor = m
+        break
+
+WIDTH, HEIGHT = monitor.width, monitor.height
+
 FPS = 60
 BG_COLOR = (30, 30, 40)
 BUTTON_COLOR = (70, 130, 180)
@@ -16,8 +26,6 @@ FONT_SIZE = 36
 CONTROLS={"LEFT":pygame.K_q,"RIGHT":pygame.K_s,"JUMP":pygame.K_SPACE,"DASH":pygame.K_LSHIFT,"CHANGE ARM":pygame.K_TAB}
 wait_key=False
 action_changing=None
-
-from screeninfo import get_monitors
 
 
 
@@ -120,21 +128,8 @@ class Menu:
 
 
 def start_game():
-    
-    max_fps = 60  #vpar défaut
-    monitors = get_monitors()
-    primary_monitor = None
-
-    for m in monitors:
-        if m.x == 0 and m.y == 0: 
-            primary_monitor = m
-            break
-    if primary_monitor and hasattr(primary_monitor, 'refresh_rate') and primary_monitor.refresh_rate:
-        max_fps = primary_monitor.refresh_rate
-
-    print(f"Max FPS de l'écran : {max_fps}")
     in_game = True
-    game = Game(max_fps=max_fps)
+    game = Game(FPS, [WIDTH,HEIGHT])
     game.run()
     while in_game:
         for ev in pygame.event.get():

@@ -37,17 +37,20 @@ def resource_path(relative_path):
 
 
 class Game:
-    def __init__(self, max_fps=60):  
+    def __init__(self, max_fps=60, resolution : list = [0, 0]):
         self.max_fps = max_fps
         pygame.init()
 
         pygame.display.set_caption('ninja game')
-        monitors = get_monitors()
-        for m in monitors:
-            if m.is_primary:
-                monitor = m
-        print(f"Initialising game with width: {monitor.width} and height: {monitor.height}")
-        self.screen = pygame.display.set_mode((monitor.width, monitor.height))
+        if resolution == [0, 0]:
+            monitors = get_monitors()
+            for m in monitors:
+                if m.is_primary:
+                    monitor = m
+                    break
+            resolution = [monitor.width, monitor.height]
+        print(f"Initialising game with width: {resolution[0]} and height: {resolution[1]}")
+        self.screen = pygame.display.set_mode(resolution)
         
         self.base_resolution = (320, 180)
         self.zoom = 1.0
