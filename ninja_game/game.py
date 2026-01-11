@@ -97,8 +97,9 @@ class Game:
             'ambience': pygame.mixer.Sound(resource_path('data/sfx/ambience.wav')),
         }
 
-        self.MUSIC_Volume = 0.5  ############# Volume global #############
-        self.SFX_Volume = 0.5  ########### Volume des SFX #############
+        self.MUSIC_Volume = 0  ############# Volume global #############
+        self.SFX_Volume = 0  ########### Volume des SFX #############
+        self.music_on = False  # État de la musique (activée par défaut)
 
         # Ajuster les volumes
         self.sfx['ambience'].set_volume(self.SFX_Volume)
@@ -307,6 +308,29 @@ class Game:
                     if event.key == pygame.K_F1:
                         self.player.weapon.weapon_equiped.toggle_debug()
                         self.debug = not self.debug
+                    if event.key == pygame.K_F2:
+                        self.music_on = not self.music_on # Inverse l'état (True devient False et inversement)
+                        
+                        if self.music_on:
+                            self.MUSIC_Volume = 0.5  
+                            self.SFX_Volume = 0.5
+                            pygame.mixer.music.set_volume(self.MUSIC_Volume)
+                            self.sfx['ambience'].set_volume(self.SFX_Volume)
+                            self.sfx['shoot'].set_volume(self.SFX_Volume)
+                            self.sfx['hit'].set_volume(self.SFX_Volume)
+                            self.sfx['dash'].set_volume(self.SFX_Volume)
+                            self.sfx['jump'].set_volume(self.SFX_Volume)
+                            print("Musique activée")
+                        else:
+                            self.MUSIC_Volume = 0  
+                            self.SFX_Volume = 0
+                            pygame.mixer.music.set_volume(self.MUSIC_Volume)
+                            self.sfx['ambience'].set_volume(self.SFX_Volume)
+                            self.sfx['shoot'].set_volume(self.SFX_Volume)
+                            self.sfx['hit'].set_volume(self.SFX_Volume)
+                            self.sfx['dash'].set_volume(self.SFX_Volume)
+                            self.sfx['jump'].set_volume(self.SFX_Volume)
+                            print("Musique coupée")
                     # Mouvement horizontal
                     if event.key == pygame.K_LEFT or event.key == pygame.K_q:
                         self.movement[0] = True
