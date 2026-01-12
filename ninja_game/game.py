@@ -188,7 +188,6 @@ class Game:
         
         while True:
             dt = self.clock.tick(self.max_fps) / 1000  # dt en secondes
-            print(f"dt: {dt:.4f} seconds")
             
             # --- Check Server Level Change ---
             if self.net.map_change_id is not None:
