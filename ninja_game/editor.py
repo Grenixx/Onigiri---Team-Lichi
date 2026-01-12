@@ -12,7 +12,13 @@ class Editor:
         pygame.init()
 
         pygame.display.set_caption('editor')
-        self.screen = pygame.display.set_mode((640, 480))
+        self.window_size = (640, 480)
+        self.fullscreen = False
+
+        self.screen = pygame.display.set_mode(
+            self.window_size,
+            pygame.RESIZABLE
+        )
         self.display = pygame.Surface((320, 240))
 
         self.clock = pygame.time.Clock()
@@ -59,8 +65,14 @@ class Editor:
             current_tile_img = self.assets[self.tile_list[self.tile_group]][self.tile_variant].copy()
             current_tile_img.set_alpha(100)
             
-            mpos = pygame.mouse.get_pos()
-            mpos = (mpos[0] / RENDER_SCALE, mpos[1] / RENDER_SCALE)
+            mx, my = pygame.mouse.get_pos()
+            sw, sh = self.screen.get_size()
+
+            scale_x = sw / self.display.get_width()
+            scale_y = sh / self.display.get_height()
+
+            mpos = (mx / scale_x, my / scale_y)
+
             tile_pos = (int((mpos[0] + self.scroll[0]) // self.tilemap.tile_size), int((mpos[1] + self.scroll[1]) // self.tilemap.tile_size))
             
             if self.ongrid:
@@ -113,11 +125,11 @@ class Editor:
                         self.right_clicking = False
                         
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_a:
+                    if event.key == pygame.K_q:
                         self.movement[0] = True
                     if event.key == pygame.K_d:
                         self.movement[1] = True
-                    if event.key == pygame.K_w:
+                    if event.key == pygame.K_z:
                         self.movement[2] = True
                     if event.key == pygame.K_s:
                         self.movement[3] = True
@@ -132,17 +144,35 @@ class Editor:
                         print('Map saved to map.json')
                     if event.key == pygame.K_LSHIFT:
                         self.shift = True
+                    if event.key == pygame.K_F11:
+                        self.fullscreen = not self.fullscreen
+
+                        if self.fullscreen:
+                            info = pygame.display.Info()
+                            self.screen = pygame.display.set_mode(
+                                (info.current_w, info.current_h),
+                                pygame.FULLSCREEN
+                            )
+                        else:
+                            self.screen = pygame.display.set_mode(
+                                self.window_size,
+                                pygame.RESIZABLE
+                            )
+
+
                 if event.type == pygame.KEYUP:
-                    if event.key == pygame.K_a:
+                    if event.key == pygame.K_q:
                         self.movement[0] = False
                     if event.key == pygame.K_d:
                         self.movement[1] = False
-                    if event.key == pygame.K_w:
+                    if event.key == pygame.K_z:
                         self.movement[2] = False
                     if event.key == pygame.K_s:
                         self.movement[3] = False
                     if event.key == pygame.K_LSHIFT:
                         self.shift = False
+                
+
             
             self.screen.blit(pygame.transform.scale(self.display, self.screen.get_size()), (0, 0))
             pygame.display.update()

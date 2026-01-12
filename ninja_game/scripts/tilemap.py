@@ -54,7 +54,7 @@ class Tilemap:
                 if not keep:
                     self.offgrid_tiles.remove(tile)
                     
-        for loc in self.tilemap:
+        for loc in list(self.tilemap.keys()):
             tile = self.tilemap[loc]
             if (tile['type'], tile['variant']) in id_pairs:
                 matches.append(tile.copy())
@@ -93,6 +93,10 @@ class Tilemap:
         self.offgrid_tiles = map_data['offgrid']
 
         # 🌿 AJOUT — générer l’herbe après chargement
+        # On vide l'herbe précédente
+        if hasattr(self.grass_manager, 'grass_tiles'):
+            self.grass_manager.grass_tiles.clear() # Try clear if list/dict
+            
         self.generate_grass()
         
         

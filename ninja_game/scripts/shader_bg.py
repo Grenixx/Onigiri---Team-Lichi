@@ -12,9 +12,6 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
-
-
-
 class ShaderBackground:
     def __init__(self, width, height, frag_shader_path):
         self.width = width
@@ -59,3 +56,10 @@ class ShaderBackground:
         data = self.fbo.read(components=3)
         image = pygame.image.frombuffer(data, (self.width, self.height), "RGB")
         return pygame.transform.flip(image, False, True)
+
+    def resize(self, width, height):
+        self.width = width
+        self.height = height
+        self.fbo.release()
+        self.fbo = self.ctx.simple_framebuffer((width, height))
+        self.fbo.use()

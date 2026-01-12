@@ -14,7 +14,8 @@ class ClientNetwork:
         self.running = True
 
         self.remote_players = {}
-        self.ping = 0.0  # <--- Nouveau
+        self.ping = 0.0
+        self.map_change_id = None # <--- Nouveau
 
         # thread de réception
         threading.Thread(target=self.listen, daemon=True).start()
@@ -58,39 +59,52 @@ class ClientNetwork:
                 if not data:
                     continue
 
-                # Si le message commence par \x09 → c’est un pong
-                if data[0] == 9 and len(data) >= 9:
+                msg_type = data[0]
+
+                # --- PONG (Type 9) ---
+                if msg_type == 9 and len(data) >= 9:
                     sent_time = struct.unpack("d", data[1:9])[0]
-                    self.ping = (time.time() - sent_time) * 1000  # ms
+                    self.ping = (time.time() - sent_time) * 1000
                     continue
 
-                offset = 0
-                count = data[offset]
-                offset += 1
-                new_remote_players = {}
-
-                for _ in range(count):
-                    if len(data) >= offset + 28:
-                        pid = struct.unpack("I", data[offset:offset+4])[0]
-                        x, y = struct.unpack("ff", data[offset+4:offset+12])
-                        action = data[offset+12:offset+27].decode('utf-8').rstrip('\x00')
-                        flip = data[offset+27] == 1
-                        new_remote_players[pid] = (x, y, action, flip)
-                        offset += 28
-                    else:
-                        break
-                self.remote_players = new_remote_players
-
-                if len(data) >= offset + 1:
-                    enemy_count = data[offset]
+                # --- WORLD UPDATE (Type 2) ---
+                if msg_type == 2:
+                    offset = 1
+                    if len(data) < offset + 1: continue
+                    count = data[offset]
                     offset += 1
-                    new_enemies = {}
-                    for _ in range(enemy_count):
-                        if len(data) >= offset + 12:
-                            eid, x, y = struct.unpack("Iff", data[offset:offset+12])
-                            new_enemies[eid] = (x, y)
-                            offset += 12
-                    self.enemies = new_enemies
+                    new_remote_players = {}
+
+                    for _ in range(count):
+                        if len(data) >= offset + 28:
+                            pid = struct.unpack("I", data[offset:offset+4])[0]
+                            x, y = struct.unpack("ff", data[offset+4:offset+12])
+                            action = data[offset+12:offset+27].decode('utf-8').rstrip('\x00')
+                            flip = data[offset+27] == 1
+                            new_remote_players[pid] = (x, y, action, flip)
+                            offset += 28
+                        else:
+                            break
+                    self.remote_players = new_remote_players
+
+                    if len(data) >= offset + 1:
+                        enemy_count = data[offset]
+                        offset += 1
+                        new_enemies = {}
+                        for _ in range(enemy_count):
+                            if len(data) >= offset + 13:
+                                eid, x, y, flip = struct.unpack("Iff?", data[offset:offset+13])
+                                new_enemies[eid] = (x, y, flip)
+                                offset += 13
+                        self.enemies = new_enemies
+                    continue
+
+                # --- MAP CHANGE (Type 4) ---
+                if msg_type == 4:
+                    if len(data) >= 5:
+                        map_id = struct.unpack("<I", data[1:5])[0]
+                        self.map_change_id = map_id
+                    continue
 
             except socket.timeout:
                 pass
@@ -116,6 +130,13 @@ class ClientNetwork:
         except Exception as e:
             print("Remove enemy error:", e)
 
+    def send_map_change_request(self):
+        try:
+            # Type 5: Request Map Change
+            packet = b'\x05'
+            self.sock.sendto(packet, self.server)
+        except Exception as e:
+            print("Send map change error:", e)
 
     def _ping_loop(self):
         """Thread séparé qui envoie périodiquement un ping."""
