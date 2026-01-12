@@ -188,6 +188,7 @@ class Game:
         
         while True:
             dt = self.clock.tick(self.max_fps) / 1000  # dt en secondes
+            print(f"dt: {dt:.4f} seconds")
             
             # --- Check Server Level Change ---
             if self.net.map_change_id is not None:
@@ -228,12 +229,15 @@ class Game:
             self.screenshake = max(0, self.screenshake - 1)
 
             if self.transition < 0:
-                self.transition += 1
+                if dt < 0.2:  # Pour éviter que ca soit a 0.45 frame 1 car le dt s init a de grande valeur au lancement
+                    self.transition += dt * 60 #60 c est la speed
+                    if self.transition > 0:
+                        self.transition = 0
             
             if self.dead:
                 self.dead += 1
                 if self.dead >= 10:
-                    self.transition = min(30, self.transition + 1)
+                    self.transition = min(30, self.transition + dt * 60)
                 if self.dead > 40:
                     self.load_level(self.level)
             
@@ -415,7 +419,7 @@ class Game:
                 if self.controller.right_trigger > 0.2:
                     self.player.dash()
 
-            if self.transition:
+            if self.transition != 0:
                 transition_surf = pygame.Surface(self.display.get_size())
                 pygame.draw.circle(transition_surf, (255, 255, 255), (self.display.get_width() // 2, self.display.get_height() // 2), (30 - abs(self.transition)) * 8)
                 transition_surf.set_colorkey((255, 255, 255))
