@@ -227,6 +227,29 @@ class Patrol(Enemy):
         #print(f"dist : {self.wander_dist}")
         #print(f"angle : {self.wander_angle}")
 
+    def wander(self) -> list:
+        pos = [self.properties['x'], self.properties['y']]
+        self.properties['state'] = 'idle'
+        if not self.wander_pos:
+            self.create_wander_pos()
+        #print(distane_to(self.wander_pos, pos))
+        velocity = [0,0]
+        if distane_to(self.wander_pos, pos) > 1:
+            velocity = normalized(vector_to(pos, self.wander_pos))
+            self.wander_speed = max(self.wander_speed - WANDER_SPEED_DECAY, MIN_WANDER_SPEED) # * delta
+            velocity = [i * self.wander_speed for i in velocity]
+            new_x = pos[0] + velocity[0] # * delta
+            new_y = pos[1] + velocity[1] # * delta
+            hit_result = self.does_collide([new_x, new_y])
+            if hit_result != [False, False]: # encountered a wall
+                #print(f"{self.eid} encountered a wall")
+                self.create_wander_pos(hit_result)
+                velocity = [0,0]
+        else: # reached wander pos
+            #print(f"{self.eid} reached wander pos")
+            self.create_wander_pos()
+        return velocity
+
     def physics_process(self, delta: float) -> None:
         """The physics engine of the enemy called every tick by EnemyManager.update()"""
         pos = [self.properties['x'], self.properties['y']]
@@ -243,36 +266,20 @@ class Patrol(Enemy):
         
         velocity = [0,0]
         if closest_pid: # if has target
+            dist = sqrt(closest_dist)
             self.properties['state'] = 'rage'
             self.wander_angle = None
             self.wander_dist = None
             self.wander_pos = None
             self.wander_speed = self.speed
             self.properties['target_player'] = closest_pid
-            dist = sqrt(closest_dist)
             if dist > 5:
                 velocity = normalized(vector_to(pos, self.players_last_pos[closest_pid]))
                 velocity = [i * self.speed for i in velocity]
+            elif not self.can_see_player(players[closest_pid]):
+                velocity = self.wander()
         else:
-            self.properties['state'] = 'idle'
-            if not self.wander_pos:
-                self.create_wander_pos()
-            #print(distane_to(self.wander_pos, pos))
-            if distane_to(self.wander_pos, pos) > 1:
-                velocity = normalized(vector_to(pos, self.wander_pos))
-                self.wander_speed = max(self.wander_speed - WANDER_SPEED_DECAY, MIN_WANDER_SPEED) # * delta
-                velocity = [i * self.wander_speed for i in velocity]
-                new_x = pos[0] + velocity[0] # * delta
-                new_y = pos[1] + velocity[1] # * delta
-                hit_result = self.does_collide([new_x, new_y])
-                if hit_result != [False, False]: # encountered a wall
-                    #print(f"{self.eid} encountered a wall")
-                    self.create_wander_pos(hit_result)
-                    velocity = [0,0]
-            else: # reached wander pos
-                #print(f"{self.eid} reached wander pos")
-                self.create_wander_pos()
-            
+            velocity = self.wander()
         
         self.move_and_slide(velocity, delta)
 
