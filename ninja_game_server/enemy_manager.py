@@ -178,7 +178,7 @@ DIST_WANDER = 8
 MIN_WANDER_DIST = 2
 MIN_WANDER_SPEED = 1.5
 WANDER_SPEED_DECAY = 0.01
-MAX_DISTANCE_FROM_SPAWN = 16*20
+MAX_DISTANCE_FROM_SPAWN = 16*12
 
 class Patrol(Enemy):
     def __init__(self, eid: int, pos: list, enemy_manager: EnemyManager):
