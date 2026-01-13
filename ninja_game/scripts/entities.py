@@ -173,7 +173,7 @@ class Player(PhysicsEntity):
             self.set_action('wall_slide')
         
         if not self.wall_slide and not self.action.startswith('attack'):
-            if self.air_time > 0.067:
+            if self.air_time > 0.1:
                 self.set_action('jump')
             elif movement[0] != 0:
                 self.set_action('run')
