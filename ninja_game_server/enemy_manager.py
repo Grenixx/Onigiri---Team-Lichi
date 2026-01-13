@@ -11,7 +11,7 @@ class EnemyManager:
         self.players = []
         self.reset(tilemap)
 
-    def reset(self, tilemap):
+    def reset(self, tilemap) -> None:
         self.tilemap = tilemap
         self.enemies.clear()
         # Find spawners
@@ -20,12 +20,12 @@ class EnemyManager:
             if spawner['variant'] == 1: # Enemy spawner
                 self.create_enemy(spawner['pos'], "mob2")
 
-    def create_enemy(self, pos: list, enemy_type: str):
+    def create_enemy(self, pos: list, enemy_type: str) -> None:
         enemy_types = {"blob": Blob, "mob2": Mob2}
         self.enemies[self.next_enemy_id] = enemy_types[enemy_type](self.next_enemy_id, pos, self)
         self.next_enemy_id += 1
 
-    def update(self, players):
+    def update(self, players: dict) -> None:
         """Met à jour tous les ennemis en fonction de la map et des joueurs"""
         if not players:
             return
@@ -36,7 +36,7 @@ class EnemyManager:
             enemy.physics_process(0.0)
 
 class Enemy:
-    def __init__(self, eid, pos, enemy_manager, speed):
+    def __init__(self, eid: int, pos: list, enemy_manager: EnemyManager, speed: float):
         self.eid = eid
         self.properties = {
             'x': pos[0],
@@ -50,7 +50,7 @@ class Enemy:
         self.speed = speed
         self.spawn_position = pos
         print(f"ennemi créé en {pos} !")
-    def can_see_player(self, player):
+    def can_see_player(self, player: list) -> None:
         return not raycast_collide([self.properties['x'], self.properties['y']],
                                     angle(vector_to([self.properties['x'], self.properties['y']], player)),
                                     self.enemy_manager.tilemap,
@@ -58,12 +58,14 @@ class Enemy:
                                     4,
                                     PHYSICS_TILES
                                     )
-    def create_enemy(self, pos: list, enemy_type: str):
+    def create_enemy(self, pos: list, enemy_type: str) -> None:
         self.enemy_manager.create_enemy(pos, enemy_type)
 
     def does_collide(self,new_pos: list) -> list:
         """
-        Renvoie si le mob va avoir une collision à la prochaine frame sous forme de tableau de booléens
+        Renvoie si le mob va avoir une collision à la prochaine frame sous forme de tableau de booléens, 
+        où le premier élément correspond à une collision en x et le deuxième à une collision en y
+        Exemple :
         [False,True]: collision en y
         """
         res = [False, False]
@@ -94,11 +96,11 @@ class Enemy:
         pass
 
 class Blob(Enemy):
-    def __init__(self, eid, pos, enemy_manager):
+    def __init__(self, eid: int, pos: list, enemy_manager: EnemyManager):
         super().__init__(eid, pos, enemy_manager, 1.5)
         self.properties['type'] = "blob"
     
-    def physics_process(self, delta: float):
+    def physics_process(self, delta: float) -> None:
         pos = [self.properties['x'], self.properties['y']]
         velocity = [self.properties['vx'], self.properties['vy']]
         players = self.enemy_manager.players
@@ -152,7 +154,7 @@ class Blob(Enemy):
             
             # test
             if random.randint(0, 500) == 0:
-                new_blob_pos = raycast_pos(pos, angle(vector_to(pos, players[pid])), tilemap, distane_to(pos, players[pid]) - 10, 4, 10, PHYSICS_TILES, True)
+                new_blob_pos = raycast_pos(pos, angle(vector_to(pos, players[pid])), tilemap, distane_to(pos, players[pid]) - 10, 4, PHYSICS_TILES, 10, True)
                 if new_blob_pos != None:
                     self.create_enemy(new_blob_pos, "blob")
                 else:
@@ -170,7 +172,7 @@ WANDER_SPEED_DECAY = 0.01
 MAX_DISTANCE_FROM_SPAWN = 16*12
 
 class Mob2(Enemy):
-    def __init__(self, eid, pos, enemy_manager):
+    def __init__(self, eid: int, pos: list, enemy_manager: EnemyManager):
         super().__init__(eid, pos, enemy_manager, 1.5 * 1.5)
         self.properties['type'] = "mob2"
         self.players_last_pos = {}
@@ -179,7 +181,7 @@ class Mob2(Enemy):
         self.wander_dist = None
         self.wander_speed = self.speed
     
-    def create_wander_pos(self, hit_result = [False, False]):
+    def create_wander_pos(self, hit_result: list = [False, False]) -> None:
         pos = [self.properties['x'], self.properties['y']]
         if self.wander_angle == None:
             self.wander_angle = angle([self.properties['vx'], self.properties['vy']])
@@ -213,7 +215,7 @@ class Mob2(Enemy):
         #print(f"dist : {self.wander_dist}")
         #print(f"angle : {self.wander_angle}")
 
-    def physics_process(self, delta: float):
+    def physics_process(self, delta: float) -> None:
         pos = [self.properties['x'], self.properties['y']]
         players = self.enemy_manager.players
         
@@ -283,58 +285,68 @@ class Mob2(Enemy):
                     players_last_pos[pid] = self.players_last_pos[pid]
         self.players_last_pos = players_last_pos
 
-def list_copy(lst):
+def list_copy(lst: list) -> list:
     """
-    Empêche les effets de bord dans les listes
+    Prevents side effects in lists
     """
     return [i for i in lst]
 
-def add_vecs(vec1: list, vec2: list):
+def add_vecs(vec1: list, vec2: list) -> list:
     return [vec1[i] + vec2[i] for i in range(2)]
 
-def sub_vecs(vec1: list, vec2: list):
+def sub_vecs(vec1: list, vec2: list) -> list:
     return [vec1[i] - vec2[i] for i in range(2)]
 
-def vector_to(pos1: list,pos2: list):
+def vector_to(pos1: list, pos2: list) -> list:
     """
-    Renvoie un vecteur de la position 1 vers 2
+    Returns a vector from position 1 to position 2
     """
     return [pos2[0] - pos1[0], pos2[1] - pos1[1]]
 
-def distance_squared_to(pos1: list,pos2: list):
+def distance_squared_to(pos1: list, pos2: list) -> float:
     """
-    Renvoie la distance au carré entre la position 1 et 2
+    Returns the squared distance between position 1 and position 2
     """
     vec = vector_to(pos1,pos2)
     return vec[0] ** 2 + vec[1] ** 2
 
-def distane_to(pos1: list,pos2: list):
+def distane_to(pos1: list, pos2: list) -> float:
     """
-    Renvoie la distance entre la position 1 et 2
+    Returns the distance between position 1 and position 2
     """
     return sqrt(distance_squared_to(pos1,pos2))
 
-def norm(vec: list):
+def norm(vec: list) -> float:
+    """
+    Returns the norm of a vector
+    """
     return distane_to([0,0],vec)
 
-def normalized(vec: list):
+def normalized(vec: list) -> list:
     """
-    Renvoie le vecteur passé en entrée normalisé
+    Returns the normalized input vector
     """
     norm = distane_to([0,0],vec)
     vec = [i/norm for i in vec]
     return vec
 
-def is_normalized(vec: list):
+def is_normalized(vec: list) -> bool:
     """
-    Vérifie si le vecteur est normalisé
+    Checks if the vector is normalised
     """
     return norm(vec) == 1
 
-def vec_from_angle(norm: float, angle: float):
+def vec_from_angle(norm: float, angle: float) -> list:
+    """
+    Returns the vector corresponding to it's norm and angle
+    """
     return [cos(angle) * norm, sin(angle) * norm]
 
-def angle(vec: list):
+def angle(vec: list) -> float:
+    """
+    Returns the angle of a given vector
+    (The angle of a null vector is considered 0)
+    """
     n = norm(vec)
     if n == 0:
         return 0
@@ -349,20 +361,29 @@ def angle(vec: list):
     return ax
 
 def angle_modulo(angle: float) -> float:
+    """
+    Takes an angle and returns the angle mod (2pi) in [-pi, pi]
+    """
     if angle > pi:
         angle -= pi
     elif angle < -pi:
         angle += pi
     return angle
 
-def is_within(pos, pos1, pos2):
+def is_within(pos: list, pos1: list, pos2: list) -> bool:
+    """
+    Returns True if pos is between pos1 and pos2, False otherwise
+    """
     pos_r1 = [pos1[i] <= pos[i] and pos2[i] >= pos[i] for i in range(2)]
     pos_r2 = [pos1[i] >= pos[i] and pos2[i] <= pos[i] for i in range(2)]
     return (pos_r1[0] and pos_r1[1]) or (pos_r2[0] and pos_r2[1])
 
-def raycast_collide(pos: list, angle: float, tilemap, dist_max: float = 1000, dist_check: float = 4, mask: list = [], return_pos: bool = False):
+def raycast_collide(pos: list, angle: float, tilemap, dist_max: float = 1000, dist_check: float = 4, mask: list = [], return_pos: bool = False) -> bool | list:
     """
-    
+    Creates a raycast starting from 'pos' with a given 'angle', and checks whether it hits an element of the 'tilemap' belonging to the 'mask' (if 'mask' is not empty).
+    The raycast uses a maximum distance 'dist_max' and a step distance 'dist_check'.
+    Returns a boolean indicating whether the raycast hit something.
+    Optional parameter: 'return_pos', which returns the first (approximate) position where the raycast hits something, if any, instead of a boolean.
     """
     vec = vec_from_angle(dist_check, angle)
     dist = 0
@@ -377,18 +398,34 @@ def raycast_collide(pos: list, angle: float, tilemap, dist_max: float = 1000, di
         dist += dist_check
     return False
 
-def is_round(num):
+def is_round(num: float) -> bool:
+    """
+    Returns if a number is round
+    """
     return round(num) == num
 
-def is_almost_round(num, margin):
+def is_almost_round(num: float, margin: float) -> list:
+    """
+    Returns if the number is almost round with an error margin
+    """
     return floor(num) != floor(num + margin) or floor(num) != floor(num - margin)
 
-def round_pos_if_possible(pos, margin):
+def round_pos_if_possible(pos: list, margin: float) -> list:
+    """
+    Rounds the coordinates of a position if these coordinates are almost round with respect to the margin
+    """
     return [round(i) if is_almost_round(i, margin) else i for i in pos]
 
-def raycast_pos(pos: list, angle: float, tilemap, dist_max: float = 1000, dist_check: float = 4, precision : int = 4, mask: list = [], fix_collisions: bool = False):
+def raycast_pos(pos: list, angle: float, tilemap, dist_max: float = 1000, dist_check: float = 4, mask: list = [], precision : int = 10, fix_collisions: bool = False) -> list | None:
     """
-    
+    Creates a raycast starting from 'pos' with a given 'angle', and checks whether it hits an element of the 'tilemap' belonging to the 'mask' (if the 'mask' is not empty).
+    The raycast uses a maximum distance 'dist_max' and a step distance 'dist_check'.
+    Returns the impact position of the raycast if it hits something, or 'None' otherwise.
+
+    Optional parameters:
+        'precision': sets the number of steps used to make the impact position more accurate
+        'fix_collision': adjusts the returned position so it is outside the hit tile (useful for spawning a monster at the desired position)
+
     """
     vec = vec_from_angle(dist_check, angle)
     dist = 0
@@ -404,13 +441,13 @@ def raycast_pos(pos: list, angle: float, tilemap, dist_max: float = 1000, dist_c
         else:
             pos_check = add_vecs(pos_check, vec)
     
-    # Ajustements
+    # Adjustments
     if precision >= 10:
         pos_check = round_pos_if_possible(pos_check, dist_check * 2**-(precision - 1))
         if fix_collisions:
-            if is_round(pos_check[0]) and angle >= -pi/2 and angle <= pi/2: # collide left side of tile
+            if is_round(pos_check[0]) and angle >= -pi/2 and angle <= pi/2: # collides with left side of a tile
                 pos_check[0] -= 0.0000000000001
-            if is_round(pos_check[1]) and angle >= 0 and angle <= pi: # collide up side of tile
+            if is_round(pos_check[1]) and angle >= 0 and angle <= pi: # collides with up side of a tile
                 pos_check[1] -= 0.0000000000001
 
     return pos_check
