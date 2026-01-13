@@ -12,6 +12,7 @@ class EnemyManager:
         self.reset(tilemap)
 
     def reset(self, tilemap) -> None:
+        """Resets all the enemies on the map"""
         self.tilemap = tilemap
         self.enemies.clear()
         # Find spawners
@@ -21,12 +22,13 @@ class EnemyManager:
                 self.create_enemy(spawner['pos'], "mob2")
 
     def create_enemy(self, pos: list, enemy_type: str) -> None:
+        """Creates an enemy at 'pos' with the type 'enemy_type'"""
         enemy_types = {"blob": Blob, "mob2": Mob2}
         self.enemies[self.next_enemy_id] = enemy_types[enemy_type](self.next_enemy_id, pos, self)
         self.next_enemy_id += 1
 
     def update(self, players: dict) -> None:
-        """Met à jour tous les ennemis en fonction de la map et des joueurs"""
+        """Updates all enemies based on the map and the players"""
         if not players:
             return
         self.players = players
@@ -51,6 +53,7 @@ class Enemy:
         self.spawn_position = pos
         print(f"ennemi créé en {pos} !")
     def can_see_player(self, player: list) -> None:
+        """Returns a boolean indicating whether the enemy can see the player"""
         return not raycast_collide([self.properties['x'], self.properties['y']],
                                     angle(vector_to([self.properties['x'], self.properties['y']], player)),
                                     self.enemy_manager.tilemap,
@@ -63,10 +66,10 @@ class Enemy:
 
     def does_collide(self,new_pos: list) -> list:
         """
-        Renvoie si le mob va avoir une collision à la prochaine frame sous forme de tableau de booléens, 
-        où le premier élément correspond à une collision en x et le deuxième à une collision en y
-        Exemple :
-        [False,True]: collision en y
+        Returns whether the mob will have a collision on the next frame as an array of booleans,
+        where the first element corresponds to a collision on the x-axis and the second to a collision on the y-axis.
+        Example:
+        [False, True]: collision on the y-axis
         """
         res = [False, False]
         if self.enemy_manager.tilemap.solid_check((new_pos[0], self.properties['y'])):
@@ -76,8 +79,12 @@ class Enemy:
         return res
 
     def move_and_slide(self, velocity: list, delta: float) -> None:
-        self.properties['vx'] = velocity[0] # * delta
-        self.properties['vy'] = velocity[1] # * delta
+        """
+        Applies the velocity and updates the position
+        (verifying collisions) 
+        """
+        self.properties['vx'] = velocity[0]
+        self.properties['vy'] = velocity[1]
         new_pos = [self.properties['x'] + self.properties['vx'], self.properties['y'] + self.properties['vy']]
         collision = self.does_collide(new_pos)
         if collision[0]:
@@ -101,6 +108,7 @@ class Blob(Enemy):
         self.properties['type'] = "blob"
     
     def physics_process(self, delta: float) -> None:
+        """The physics engine of the enemy called every tick by EnemyManager.update()"""
         pos = [self.properties['x'], self.properties['y']]
         velocity = [self.properties['vx'], self.properties['vy']]
         players = self.enemy_manager.players
@@ -182,6 +190,7 @@ class Mob2(Enemy):
         self.wander_speed = self.speed
     
     def create_wander_pos(self, hit_result: list = [False, False]) -> None:
+        """Creates a wandering position when the patrol doesn't see the player"""
         pos = [self.properties['x'], self.properties['y']]
         if self.wander_angle == None:
             self.wander_angle = angle([self.properties['vx'], self.properties['vy']])
@@ -216,6 +225,7 @@ class Mob2(Enemy):
         #print(f"angle : {self.wander_angle}")
 
     def physics_process(self, delta: float) -> None:
+        """The physics engine of the enemy called every tick by EnemyManager.update()"""
         pos = [self.properties['x'], self.properties['y']]
         players = self.enemy_manager.players
         
@@ -282,7 +292,8 @@ class Mob2(Enemy):
                     players_last_pos[pid] = [players[pid][0],players[pid][1]]
             else:
                 if pid in self.players_last_pos.keys():
-                    players_last_pos[pid] = self.players_last_pos[pid]
+                    if distane_to(self.players_last_pos[pid], pos) > 5:
+                        players_last_pos[pid] = self.players_last_pos[pid]
         self.players_last_pos = players_last_pos
 
 def list_copy(lst: list) -> list:
