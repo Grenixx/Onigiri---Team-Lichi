@@ -19,11 +19,11 @@ class EnemyManager:
         spawners = getattr(self.tilemap, 'spawners', [])
         for spawner in spawners:
             if spawner['variant'] == 1: # Enemy spawner
-                self.create_enemy(spawner['pos'], "mob2")
+                self.create_enemy(spawner['pos'], "patrol")
 
     def create_enemy(self, pos: list, enemy_type: str) -> None:
         """Creates an enemy at 'pos' with the type 'enemy_type'"""
-        enemy_types = {"blob": Blob, "mob2": Mob2}
+        enemy_types = {"blob": Blob, "patrol": Patrol}
         self.enemies[self.next_enemy_id] = enemy_types[enemy_type](self.next_enemy_id, pos, self)
         self.next_enemy_id += 1
 
@@ -47,6 +47,7 @@ class Enemy:
             'vy': 0.0,
             'target_player': None,
             'flip': False,
+            'state': "idle",
         }
         self.enemy_manager = enemy_manager
         self.speed = speed
@@ -172,17 +173,17 @@ class Blob(Enemy):
         self.properties['vx'] = velocity[0]
         self.properties['vy'] = velocity[1]
 
-VISION_DISTANCE_MOB2 = 16*8
+VISION_DISTANCE_PATROL = 16*8
 DIST_WANDER = 8
 MIN_WANDER_DIST = 2
 MIN_WANDER_SPEED = 1.5
 WANDER_SPEED_DECAY = 0.01
-MAX_DISTANCE_FROM_SPAWN = 16*12
+MAX_DISTANCE_FROM_SPAWN = 16*200
 
-class Mob2(Enemy):
+class Patrol(Enemy):
     def __init__(self, eid: int, pos: list, enemy_manager: EnemyManager):
         super().__init__(eid, pos, enemy_manager, 1.5 * 1.5)
-        self.properties['type'] = "mob2"
+        self.properties['type'] = "patrol"
         self.players_last_pos = {}
         self.wander_pos = []
         self.wander_angle = None
@@ -194,9 +195,11 @@ class Mob2(Enemy):
         pos = [self.properties['x'], self.properties['y']]
         if self.wander_angle == None:
             self.wander_angle = angle([self.properties['vx'], self.properties['vy']])
+            #print("first", self.wander_angle)
         else:
             self.wander_angle += random.uniform(-pi/6, pi/6)
             self.wander_angle = angle_modulo(self.wander_angle)
+            #print(self.wander_angle)
         
         if self.wander_dist == None:
             self.wander_dist = random.uniform(DIST_WANDER//2, DIST_WANDER)
@@ -240,6 +243,7 @@ class Mob2(Enemy):
         
         velocity = [0,0]
         if closest_pid: # if has target
+            self.properties['state'] = 'rage'
             self.wander_angle = None
             self.wander_dist = None
             self.wander_pos = None
@@ -250,6 +254,7 @@ class Mob2(Enemy):
                 velocity = normalized(vector_to(pos, self.players_last_pos[closest_pid]))
                 velocity = [i * self.speed for i in velocity]
         else:
+            self.properties['state'] = 'idle'
             if not self.wander_pos:
                 self.create_wander_pos()
             #print(distane_to(self.wander_pos, pos))
@@ -257,8 +262,8 @@ class Mob2(Enemy):
                 velocity = normalized(vector_to(pos, self.wander_pos))
                 self.wander_speed = max(self.wander_speed - WANDER_SPEED_DECAY, MIN_WANDER_SPEED) # * delta
                 velocity = [i * self.wander_speed for i in velocity]
-                new_x = pos[0] + velocity[0] * 3 # * delta
-                new_y = pos[1] + velocity[1] * 3 # * delta
+                new_x = pos[0] + velocity[0] # * delta
+                new_y = pos[1] + velocity[1] # * delta
                 hit_result = self.does_collide([new_x, new_y])
                 if hit_result != [False, False]: # encountered a wall
                     #print(f"{self.eid} encountered a wall")
@@ -288,7 +293,7 @@ class Mob2(Enemy):
         players_last_pos = {}
         for pid in players.keys():
             if self.can_see_player(players[pid]):
-                if distane_to(players[pid], pos) < VISION_DISTANCE_MOB2 and distane_to(players[pid], pos) > 1:
+                if distane_to(players[pid], pos) < VISION_DISTANCE_PATROL and distane_to(players[pid], pos) > 1:
                     players_last_pos[pid] = [players[pid][0],players[pid][1]]
             else:
                 if pid in self.players_last_pos.keys():
