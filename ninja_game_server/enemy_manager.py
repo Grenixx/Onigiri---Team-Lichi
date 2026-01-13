@@ -380,10 +380,10 @@ def angle_modulo(angle: float) -> float:
     """
     Takes an angle and returns the angle mod (2pi) in [-pi, pi]
     """
-    if angle > pi:
-        angle -= pi
-    elif angle < -pi:
-        angle += pi
+    while angle > pi:
+        angle -= 2*pi
+    while angle < -pi:
+        angle += 2*pi
     return angle
 
 def is_within(pos: list, pos1: list, pos2: list) -> bool:
