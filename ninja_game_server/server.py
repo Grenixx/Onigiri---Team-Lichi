@@ -225,9 +225,21 @@ class GameServer:
             payload += struct.pack("Iff", pid, x, y) + action_bytes + flip_byte
 
         payload += struct.pack("B", len(self.EnemyManager.enemies))
-        for eid, e in self.EnemyManager.enemies.items():
-            payload += struct.pack("Iff?", eid, e.properties['x'], e.properties['y'], e.properties['flip'])
+        #for eid, e in self.EnemyManager.enemies.items():
+        #    payload += struct.pack("Iff?", eid, e.properties['x'], e.properties['y'], e.properties['flip'])
 
+        for eid, e in self.EnemyManager.enemies.items():
+            state = e.properties.get("state", "")
+            state_bytes = state.encode("utf-8")[:15]
+            state_bytes += b'\x00' * (15 - len(state_bytes))
+
+            payload += (
+                struct.pack("Iff?", eid,
+                            e.properties['x'],
+                            e.properties['y'],
+                            e.properties['flip'])
+                + state_bytes
+            )
         for addr in self.players.clients:
             self.sock.sendto(payload, addr)
 

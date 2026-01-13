@@ -319,7 +319,7 @@ class PurpleCircle:
         player = self.game.player
         is_attacking = player.weapon.weapon_equiped.attack_timer > 0
 
-        for eid, (ex, ey, flip) in list(self.game.net.enemies.items()):
+        for eid, (ex, ey, flip, state) in list(self.game.net.enemies.items()):
             player = self.game.player
 
             enemy_img = self.animation.img()
@@ -355,7 +355,7 @@ class PurpleCircle:
         weapon_hitbox = current_weapon.current_rect
 
         
-        for eid, (ex, ey, flip) in list(self.game.net.enemies.items()):
+        for eid, (ex, ey, flip, state) in list(self.game.net.enemies.items()):
             enemy_rect = pygame.Rect(ex - self.radius, ey - self.radius, self.radius * 2, self.radius * 2)
             # JE RETIRE LE DASH QUI TUE
             #hit_by_dash = False
@@ -400,7 +400,7 @@ class PurpleCircle:
             self.enemy_masks[img] = pygame.mask.from_surface(img)
         enemy_mask = self.enemy_masks[img]
         
-        for eid, (x, y, flip) in self.game.net.enemies.items():
+        for eid, (x, y, flip, state) in self.game.net.enemies.items():
             screen_x = x - offset[0]
             screen_y = y - offset[1]
 
