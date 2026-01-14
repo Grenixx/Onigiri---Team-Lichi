@@ -139,10 +139,10 @@ class Player(PhysicsEntity):
         self.wall_slide_speed = 30  # pixels/seconde maximum en glissade
 
         self.air_resistance = 600  # pixels/seconde²
-        self.dash_duration = 0.1   # secondes (correspond à 30 frames à 60 FPS)
-        self.dash_speed = 200
-        self.dash_cooldown = 0.5   # secondes (correspond à 30 frames à 60 FPS)
-        self.dash_invisible_duration = 0.1  # secondes (correspond à 12 frames à 60 FPS)
+        self.dash_duration = 0.15  # secondes (Très court)
+        self.dash_speed = 330      # Ajusté
+        self.dash_cooldown = 0.4   # secondes
+        self.dash_invisible_duration = 0.1 
 
     def update(self, tilemap, movement=(0, 0), dt=0):
         super().update(tilemap, movement=movement, dt=dt) 
@@ -193,37 +193,30 @@ class Player(PhysicsEntity):
         if self.action.startswith('attack') and self.animation.done:
             self.set_action('idle')
         
-        if abs(self.dashing) in {60, 50}:
-            for i in range(20):
-                angle = random.random() * math.pi * 2
-                speed = random.random() * 0.5 + 0.5
-                pvelocity = [math.cos(angle) * speed, math.sin(angle) * speed]
-                self.game.particles.append(Particle(self.game, 'particle',
-                                                    self.rect().center,
-                                                    velocity=pvelocity,
-                                                    frame=random.randint(0, 7)))
+        if self.dashing != 0:
+            dash_progress = abs(self.dashing) / self.dash_duration
+            
+            # Plus d'ETINCELLES en forme de cone derrière
+            for i in range(3):
+                spark_angle = math.pi if self.dashing > 0 else 0
+                spark_angle += (random.random() - 0.5) * 3 
+                # On décale la position de spawn DERRIÈRE le joueur
+                spawn_pos = list(self.rect().center)
+                spawn_pos[0] += -15 if self.dashing > 0 else 15
+                spawn_pos[1] += random.randint(-5, 5)
+                self.game.sparks.append(Spark(spawn_pos, spark_angle, 2 + random.random() * 2))
+
+            # Vitesse du dash
+            self.velocity[0] = self.dash_speed if self.dashing > 0 else -self.dash_speed
+            
+            # Fin du dash : On décélère (plus de burst de particule ici)
+            if dash_progress < 0.2:
+                self.velocity[0] *= dash_progress * 5
+
         if self.dashing > 0:
             self.dashing = max(0, self.dashing - dt)
         if self.dashing < 0:
             self.dashing = min(0, self.dashing + dt)
-
-            
-        dash_progress = abs(self.dashing) / self.dash_duration
-        # Particules de début et de fin de dash
-        #if dash_progress > 0.9 or (dash_progress < 0.1 and self.dashing != 0):
-        #    for i in range(20):
-        #        angle = random.random() * math.pi * 2
-        #        speed = random.random() * 0.5 + 0.5
-        #        pvelocity = [math.cos(angle) * speed, math.sin(angle) * speed]
-        #        self.game.particles.append(Particle(self.game, 'particle',
-        #                                           self.rect().center,
-        #                                           velocity=pvelocity,
-        #                                           frame=random.randint(0, 7)))
-
-        if self.dashing != 0:
-            self.velocity[0] = self.dash_speed if self.dashing > 0 else -self.dash_speed
-            if dash_progress > 0.9:
-                self.velocity[0] *= 0.1
                 
                 # Résistance de l'air (décélération horizontale)
         if self.velocity[0] > 0:
@@ -276,6 +269,7 @@ class Player(PhysicsEntity):
     def dash(self):
         if not self.dashing:
             self.game.sfx['dash'].play()
+            # On ne met plus de burst de particules ici (demandé par l'utilisateur)
             if self.flip:
                 self.dashing = -self.dash_duration
             else:
