@@ -269,7 +269,7 @@ class Player(PhysicsEntity):
                 spawn_pos = list(self.rect().center)
                 spawn_pos[0] += -5 if direction > 0 else 5
                 spawn_pos[1] += random.randint(-2, 2)
-                self.game.sparks.append(Spark(spawn_pos, angle, 2 + random.random() * 1))
+                self.game.sparks.append(Spark(spawn_pos, angle, 2 + random.random() * 1.5))
 
             if self.flip:
                 self.dashing = -self.dash_duration
