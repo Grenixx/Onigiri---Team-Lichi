@@ -203,8 +203,8 @@ class GameServer:
                     break
         
         for pid in self.players.players:
-            _, _, a, f = self.players.players[pid]
-            self.players.players[pid] = (spawn_pos[0], spawn_pos[1], a, f)
+            _, _, a, f, w = self.players.players[pid]
+            self.players.players[pid] = (spawn_pos[0], spawn_pos[1], a, f, w)
 
         self.broadcast_map_change(map_id)
 
