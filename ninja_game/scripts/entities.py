@@ -336,96 +336,77 @@ class PurpleCircle:
             self.enemy_anims[eid].state = state
 
     def update(self, dt=1/60):
-        """
-        Vérifie les collisions entre le joueur et les ennemis.
-        Si le joueur est en dash et touche un ennemi, on le supprime.
-        """
+        """Vérifie les collisions entre joueurs/armes et les ennemis."""
         if not hasattr(self.game, 'hit_visuals'):
             self.game.hit_visuals = []
         self.game.hit_visuals = [] # Reset à chaque frame
+        
         player = self.game.player
-        is_attacking = player.weapon.weapon_equiped.attack_timer > 0
+        current_weapon = player.weapon.weapon_equiped
+        weapon_hitbox = current_weapon.current_rect
+        is_attacking = current_weapon.attack_timer > 0
+        to_remove = []
+
+        # On nettoie les animations des ennemis disparus
+        active_eids = set(self.game.net.enemies.keys())
+        current_eids = set(self.enemy_anims.keys())
+        for eid in current_eids - active_eids:
+            del self.enemy_anims[eid]
 
         for eid, (ex, ey, flip, state) in list(self.game.net.enemies.items()):
-            # Mise à jour de l'état/animation de l'ennemi
             self.set_state_for_enemy(eid, state)
             anim = self.enemy_anims[eid]
-
-            
             enemy_img = anim.img()
-            # On utilise (8, 15) par défaut pour les patrouilles (comme le joueur)
+            
+            # Hitbox basée sur la position serveur (Top-Left)
             enemy_rect = pygame.Rect(ex, ey, 8, 15)
             
-            player_rect = self.game.player.rect()
-            
-
+            # 1. Sync Mask
             if enemy_img not in self.enemy_masks:
                 self.enemy_masks[enemy_img] = pygame.mask.from_surface(enemy_img)
             enemy_mask = self.enemy_masks[enemy_img]
 
+            # 2. Collision Joueur (Dégâts reçus)
+            player_rect = player.rect()
             if player_rect.colliderect(enemy_rect):
-                player_mask = self.game.player.mask
-                
                 offset_x = enemy_rect.x - player_rect.x
                 offset_y = enemy_rect.y - player_rect.y
-
-                if player_mask.overlap(enemy_mask, (offset_x, offset_y)):
-                    if not self.game.dead and self.game.invincible_frame_time <= 0: #c est pour l invincible frame time
+                if player.mask.overlap(enemy_mask, (offset_x, offset_y)):
+                    if not self.game.dead and self.game.invincible_frame_time <= 0:
                         self.game.screenshake = max(16, self.game.screenshake)
                         self.game.sfx['hit'].play()
                         self.game.dead += dt * 60
 
-
-        # Loop pour les collisions d'arme et de debug
-        current_weapon = player.weapon.weapon_equiped
-        weapon_hitbox = current_weapon.current_rect
-        to_remove = []
-
-        for eid, (ex, ey, flip, state) in list(self.game.net.enemies.items()):
-            if eid not in self.enemy_anims: continue
-            anim = self.enemy_anims[eid]
-            enemy_img = anim.img()
-            # On utilise (8, 15) pour être cohérent avec l'affichage top-left
-            enemy_rect = pygame.Rect(ex, ey, 8, 15)
-            
-            # Check for overlap (even if not attacking, for debug visibility)
+            # 3. Collision Arme (Dégâts infligés)
             if weapon_hitbox.colliderect(enemy_rect):
-                if enemy_img not in self.enemy_masks:
-                     self.enemy_masks[enemy_img] = pygame.mask.from_surface(enemy_img)
-                enemy_mask = self.enemy_masks[enemy_img]
-
                 offset_x = enemy_rect.x - weapon_hitbox.x
                 offset_y = enemy_rect.y - weapon_hitbox.y
-
                 overlap_point = current_weapon.weapon_mask.overlap(enemy_mask, (offset_x, offset_y))
+                
                 if overlap_point:
-                    # Store intersection mask for debug (Only if attacking, to avoid permanent display)
+                    # Debug logic (Coloration de l'arme et scar)
                     if current_weapon.debug and is_attacking:
                         overlap_mask = current_weapon.weapon_mask.overlap_mask(enemy_mask, (offset_x, offset_y))
                         if overlap_mask:
-                            # Bright Red for collisions
                             hit_surf = overlap_mask.to_surface(setcolor=(255, 0, 0, 255), unsetcolor=(0,0,0,0)).convert_alpha()
                             self.game.hit_visuals.append((weapon_hitbox.topleft, hit_surf))
                             current_weapon.is_hitting = True
 
-                    # Logic: only kill if attacking
+                    # Kill logic
                     if is_attacking:
                         hit_pos = (weapon_hitbox.x + overlap_point[0], weapon_hitbox.y + overlap_point[1])
                         for i in range(30):
                             angle = random.random() * math.pi * 2
-                            speed = random.random() * 5
                             self.game.sparks.append(Spark(hit_pos, angle, 2 + random.random()))
-                            self.game.particles.append(Particle(self.game, 'particle', hit_pos, velocity=[math.cos(angle + math.pi) * speed * 0.5, math.sin(angle + math.pi) * speed * 0.5], frame=random.randint(0, 7)))
                         
                         to_remove.append(eid)
 
+        # Retrait des ennemis
         for eid in to_remove:
-            # Supprime localement pour effet instantané
             if eid in self.game.net.enemies:
                 del self.game.net.enemies[eid]
-            # Envoie la suppression au serveur
             self.game.net.remove_enemy(eid)
-        
+
 
     def render(self, surf, offset=(0, 0), dt=1):
         """Affiche les ennemis ronds violets à l’écran."""

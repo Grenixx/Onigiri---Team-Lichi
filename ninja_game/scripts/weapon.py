@@ -27,13 +27,8 @@ class Weapon:
         self.weapon_equiped.update(dt)
 
     def render(self, surf, offset=(0, 0)):
-        self.weapon_equiped.render(self.display, offset=render_scroll)
-        if self.debug:
-            mask_image = self.player.mask.to_surface(unsetcolor=(0,0,0,0), setcolor=(255,0,0,255))
-            self.display.blit(mask_image, (
-                (self.player.rect().x-3) - render_scroll[0], 
-                (self.player.rect().y-3) - render_scroll[1]
-            ))
+        # Le rendu est géré par l'arme équipée elle-même
+        self.weapon_equiped.render(surf, offset)
 
     def swing(self, direction=None):
         self.weapon_equiped.swing(direction)
