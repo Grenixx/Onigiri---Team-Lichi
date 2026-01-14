@@ -265,11 +265,11 @@ class Player(PhysicsEntity):
             spark_angle = math.pi if direction > 0 else 0
             
             for i in range(15): # Nombre d'étincelles augmenté pour l'impact unique
-                angle = spark_angle + (random.random() - 0.5) * 3 # Cone large
+                angle = spark_angle + (random.random() - 0.5) * 1.5 # Cone large
                 spawn_pos = list(self.rect().center)
-                spawn_pos[0] += -15 if direction > 0 else 15
-                spawn_pos[1] += random.randint(-5, 5)
-                self.game.sparks.append(Spark(spawn_pos, angle, 2 + random.random() * 3))
+                spawn_pos[0] += -5 if direction > 0 else 5
+                spawn_pos[1] += random.randint(-2, 2)
+                self.game.sparks.append(Spark(spawn_pos, angle, 2 + random.random() * 1))
 
             if self.flip:
                 self.dashing = -self.dash_duration
