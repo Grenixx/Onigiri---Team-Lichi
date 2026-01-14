@@ -59,7 +59,8 @@ class WeaponBase:
         # distance fixe de l'arme par rapport au joueur
         self.offset_amount = 14 
         self.current_rect = pygame.Rect(0, 0, 0, 0)
-
+        self.cache = {} # (direction, flip, frame_index) -> (img, mask, outline)
+        self.is_hitting = False # Pour le changement de couleur debug
     # ------------------------
     # Charge l'animation depuis assets
     # ------------------------
@@ -85,6 +86,7 @@ class WeaponBase:
     # Update
     # ------------------------
     def update(self, dt=1):
+        self.is_hitting = False # Reset à chaque frame
         if self.attack_timer > 0:
             speed = dt * 60 if dt is not None else 1
             self.attack_timer -= speed
@@ -94,8 +96,8 @@ class WeaponBase:
             if self.animation.done:
                 self.attack_timer = 0
 
-            self.weapon_image = self.get_image()
-            self.weapon_mask = pygame.mask.from_surface(self.weapon_image)
+            # Utilisation du cache pour l'image et le mask
+            self.weapon_image, self.weapon_mask, _ = self.get_cached_data()
 
             topleft_pos = self.get_render_pos(offset=(0,0))
             self.current_rect = pygame.Rect(topleft_pos, self.weapon_image.get_size())
@@ -117,10 +119,18 @@ class WeaponBase:
         self.animation.done = False 
 
     # ------------------------
-    # Obtenir image (avec rotation et flip)
+    # Obtenir l'image et le mask via le cache
     # ------------------------
-    def get_image(self):
-        raw_img = self.animation.img()
+    def get_cached_data(self):
+        frame_idx = int(self.animation.frame / self.animation.img_duration)
+        flip = self.owner.flip
+        key = (self.attack_direction, flip, frame_idx)
+        
+        if key in self.cache:
+            return self.cache[key]
+        
+        # Sinon on génère et on stocke
+        raw_img = self.animation.images[frame_idx]
         bg_color= raw_img.get_at((0,0))
         raw_img.set_colorkey(bg_color)
 
@@ -135,14 +145,30 @@ class WeaponBase:
 
         if self.attack_direction == "left":
             final_img = pygame.transform.flip(final_img, True, False)
-        elif self.attack_direction == "front" and self.owner.flip:
+        elif self.attack_direction == "front" and flip:
             final_img = pygame.transform.flip(final_img, True, False)
-        elif self.attack_direction == "up" and self.owner.flip:
+        elif self.attack_direction == "up" and flip:
             final_img = pygame.transform.flip(final_img, True, False)
-        elif self.attack_direction == "down" and not self.owner.flip:
+        elif self.attack_direction == "down" and not flip:
             final_img = pygame.transform.flip(final_img, True, False)
-                    
-        return final_img
+        
+        final_mask = pygame.mask.from_surface(final_img)
+        final_outline = final_mask.outline()
+        self.cache[key] = (final_img, final_mask, final_outline)
+        return final_img, final_mask, final_outline
+
+    # ------------------------
+    # Obtenir image et mask via le cache
+    # ------------------------
+    def get_cached_img_mask(self):
+        img, mask, _ = self.get_cached_data()
+        return img, mask
+
+    # ------------------------
+    # Deprecated: Obtenir image (remplacé par get_cached_data)
+    # ------------------------
+    def get_image(self):
+        return self.get_cached_img_mask()[0]
 
     # ------------------------
     # Calcul de position de rendu
@@ -187,10 +213,19 @@ class WeaponBase:
     # ------------------------
     def render_debug_hitbox(self, surf, rect, offset):
         if WeaponBase.debug:
-            if hasattr(self, 'weapon_mask'):
-                render_pos= (rect.x - offset[0], rect.y - offset[1])
-                outline = self.weapon_mask.outline()
-                if outline and len(outline)>1:
-                    # On décale les points du contour à la position de l'arme
-                    adjusted_points = [(p[0] + render_pos[0], p[1] + render_pos[1]) for p in outline]
-                    pygame.draw.lines(surf, (255, 0, 0), True, adjusted_points, 2)
+            img, mask, outline = self.get_cached_data()
+            render_pos = (rect.x - offset[0], rect.y - offset[1])
+            
+            # 1. Draw AABB (Cyan)
+            pygame.draw.rect(surf, (0, 255, 255), (render_pos[0], render_pos[1], rect.width, rect.height), 1)
+
+            # 2. Draw Full Mask (Semi-transparent Red/Green)
+            color = (255, 0, 0, 100) if self.is_hitting else (0, 255, 0, 100)
+            mask_surf = mask.to_surface(setcolor=color, unsetcolor=(0,0,0,0))
+            surf.blit(mask_surf, render_pos)
+
+            # 3. Draw Outline (Solid color)
+            if outline and len(outline) > 1:
+                color_solid = (255, 0, 0) if self.is_hitting else (0, 255, 0)
+                adjusted_points = [(p[0] + render_pos[0], p[1] + render_pos[1]) for p in outline]
+                pygame.draw.lines(surf, color_solid, True, adjusted_points, 2)

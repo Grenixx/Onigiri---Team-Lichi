@@ -39,7 +39,9 @@ class Animation:
         self.img_duration = img_dur
         self.done = False
         self.frame = 0 
-    
+        self.masks = [pygame.mask.from_surface(img) for img in self.images]
+        self.flipped_masks = [pygame.mask.from_surface(pygame.transform.flip(img, True, False)) for img in self.images]
+
     def copy(self):
         return Animation(self.images, self.img_duration, self.loop)
 
@@ -61,3 +63,9 @@ class Animation:
         index = int(self.frame / self.img_duration)
         index = max(0, min(index, len(self.images) - 1))
         return self.images[index]
+    
+    def mask(self, flip=False):
+        index = int(self.frame / self.img_duration)
+        masks = self.flipped_masks if flip else self.masks
+        index = max(0, min(index, len(masks) - 1))
+        return masks[index]

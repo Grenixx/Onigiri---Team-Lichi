@@ -94,13 +94,23 @@ class PhysicsEntity:
 
         self.image = current_img
 
-        # CRÉATION DU MASQUE
-        self.mask = pygame.mask.from_surface(self.image)
+        # CRÉATION DU MASQUE (Optimisé: utilise le masque pré-généré)
+        self.mask = self.animation.mask(flip=self.flip)
 
     def render(self, surf, offset=(0, 0)):
-        surf.blit(pygame.transform.flip(self.animation.img(), self.flip, False),
-                  (self.pos[0] - offset[0] + self.anim_offset[0],
-                   self.pos[1] - offset[1] + self.anim_offset[1]))
+        render_pos = (self.pos[0] - offset[0] + self.anim_offset[0],
+                     self.pos[1] - offset[1] + self.anim_offset[1])
+        surf.blit(pygame.transform.flip(self.animation.img(), self.flip, False), render_pos)
+
+        # Debug Visualization
+        if self.game.player.weapon.weapon_equiped.debug:
+            # 1. AABB (Cyan)
+            rect = self.rect()
+            pygame.draw.rect(surf, (0, 255, 255), (rect.x - offset[0], rect.y - offset[1], rect.width, rect.height), 1)
+            
+            # 2. Body Mask (Semi-transparent Magenta)
+            mask_surf = self.mask.to_surface(setcolor=(255, 0, 255, 100), unsetcolor=(0, 0, 0, 0))
+            surf.blit(mask_surf, render_pos)
 
 
 class Player(PhysicsEntity):
@@ -330,6 +340,9 @@ class PurpleCircle:
         Vérifie les collisions entre le joueur et les ennemis.
         Si le joueur est en dash et touche un ennemi, on le supprime.
         """
+        if not hasattr(self.game, 'hit_visuals'):
+            self.game.hit_visuals = []
+        self.game.hit_visuals = [] # Reset à chaque frame
         player = self.game.player
         is_attacking = player.weapon.weapon_equiped.attack_timer > 0
 
@@ -391,7 +404,16 @@ class PurpleCircle:
 
                 overlap_point = current_weapon.weapon_mask.overlap(enemy_mask, (offset_x, offset_y))
                 if overlap_point:
+                    current_weapon.is_hitting = True
                     hit_pos = (weapon_hitbox.x + overlap_point[0], weapon_hitbox.y + overlap_point[1])
+                    
+                    # Store intersection mask for debug
+                    if current_weapon.debug:
+                        overlap_mask = current_weapon.weapon_mask.overlap_mask(enemy_mask, (offset_x, offset_y))
+                        if overlap_mask:
+                            hit_surf = overlap_mask.to_surface(setcolor=(0, 255, 0, 255), unsetcolor=(0,0,0,0))
+                            self.game.hit_visuals.append((weapon_hitbox.topleft, hit_surf))
+
                     for i in range(30):
                         angle = random.random() * math.pi * 2
                         speed = random.random() * 5
@@ -428,32 +450,31 @@ class PurpleCircle:
             imgAnim = anim.img()
             
             if imgAnim not in self.enemy_masks:
-                self.enemy_masks[imgAnim] = pygame.mask.from_surface(imgAnim)
-            enemy_mask = self.enemy_masks[imgAnim]
+                 self.enemy_masks[imgAnim] = pygame.mask.from_surface(imgAnim)
             
-            screen_x = x - offset[0]
-            screen_y = y - offset[1]
+            # Ajustement pour être au centre (car x, y sont le centre)
+            ex_topleft = x - offset[0] - 8
+            ey_topleft = y - offset[1] - 8
 
-            #pygame.draw.circle(surf, (128, 0, 128), (int(screen_x), int(screen_y)), self.radius)
+            # Rendu Principal avec Flip
+            surf.blit(pygame.transform.flip(imgAnim, flip, False), (ex_topleft, ey_topleft))
+
+            # Advanced Debug visualization
+            if self.game.player.weapon.weapon_equiped.debug:
+                # 1. Draw Enemy AABB (Yellow)
+                enemy_rect = imgAnim.get_rect(topleft=(ex_topleft, ey_topleft))
+                pygame.draw.rect(surf, (255, 255, 0), enemy_rect, 1)
+
+                # 2. Draw Enemy Full Mask (Semi-transparent Blue)
+                enemy_mask = anim.mask(flip=flip)
+                mask_surf = enemy_mask.to_surface(setcolor=(0, 100, 255, 100), unsetcolor=(0, 0, 0, 0))
+                surf.blit(mask_surf, (ex_topleft, ey_topleft))
+
+                # 3. Draw Intersection (stored in hit_visuals as solid Green)
+                for hit_pos, hit_surf in self.game.hit_visuals:
+                    surf.blit(hit_surf, (hit_pos[0] - offset[0], hit_pos[1] - offset[1]))
             
-            surf.blit(pygame.transform.flip(imgAnim, flip, False), (screen_x - imgAnim.get_width()//2, screen_y - imgAnim.get_height()//2))
             self.game.tilemap.grass_manager.apply_force((x, y), 6, 12)
-            if (self.game.debug):
-                w, h = imgAnim.get_size()
-                top_left = (screen_x - w // 2, screen_y - h // 2)
-                try:
-                    mask_surf = enemy_mask.to_surface(setcolor=(255, 0, 255, 120), unsetcolor=(0, 0, 0, 0))
-                    mask_surf = mask_surf.convert_alpha()
-                    surf.blit(mask_surf, top_left)
-                except Exception:
-                    pass
-
-                # draw outline for clearer visualization
-                outline = enemy_mask.outline()
-                if outline:
-                    pts = [(top_left[0] + p[0], top_left[1] + p[1]) for p in outline]
-                    if len(pts) >= 3:
-                        pygame.draw.lines(surf, (0, 255, 0), True, pts, 1)
             
             
             
