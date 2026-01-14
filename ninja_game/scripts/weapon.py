@@ -23,8 +23,8 @@ class Weapon:
         self.weapon_type = weapon_type
         print(f"[DEBUG] Arme équipée : {self.weapon_type}")
 
-    def update(self):
-        self.weapon_equiped.update()
+    def update(self, dt=1):
+        self.weapon_equiped.update(dt)
 
     def render(self, surf, offset=(0, 0)):
         self.weapon_equiped.render(self.display, offset=render_scroll)

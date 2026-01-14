@@ -447,12 +447,18 @@ class RemotePlayerRenderer:
     """Affiche et anime les autres joueurs avec leur sprite."""
 
     class RemotePlayer:
-        def __init__(self, game, pid, pos=(0,0), action='idle', flip=False):
+        def __init__(self, game, pid, pos=(0,0), action='idle', flip=False, size=(8, 15)):
             self.game = game
             self.pid = pid
             self.pos = list(pos)
+            self.size = size
             self.flip = flip
+            self.air_time = 0 # Pour le weapon check
+            self.weapon = Weapon(self)
             self.set_action(action)
+
+        def rect(self):
+            return pygame.Rect(self.pos[0], self.pos[1], self.size[0], self.size[1])
 
         def set_action(self, action):
             if hasattr(self, 'action') and self.action == action:
@@ -461,15 +467,33 @@ class RemotePlayerRenderer:
             base_anim = self.game.assets.get(f'player/{action}', self.game.assets['player/idle'])
             self.animation = base_anim.copy()
 
+            if action.startswith('attack_'):
+                direction = action.split('_')[1]
+                # Hack pour permettre l'attaque vers le bas meme si on sait pas si il vole
+                if direction == 'down':
+                    self.air_time = 1.0
+                else: 
+                    self.air_time = 0
+                self.weapon.swing(direction)
+            else:
+                 self.air_time = 0
+
         def update(self, pos, action, flip, dt=1):
             self.pos = list(pos)
             self.flip = flip
             self.set_action(action)
             self.animation.update(dt)
+            self.weapon.update(dt)
+
 
         def render(self, surf, offset=(0,0)):
             img = pygame.transform.flip(self.animation.img(), self.flip, False)
             surf.blit(img, (self.pos[0] - offset[0] - 3, self.pos[1] - offset[1] - 3))
+            
+            # Render weapon
+            # On utilise weapon_equiped.render comme le joueur local
+            self.weapon.weapon_equiped.render(surf, offset)
+
             
 
     def __init__(self, game):

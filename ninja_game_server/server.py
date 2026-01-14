@@ -49,7 +49,7 @@ class PlayerManager:
 
         x, y = struct.unpack("ff", data[:8])
         action_id, flip_byte = struct.unpack("BB", data[8:10])
-        action_map = {0: 'idle', 1: 'run', 2: 'jump', 3: 'wall_slide', 4: 'slide'}
+        action_map = {0: 'idle', 1: 'run', 2: 'jump', 3: 'wall_slide', 4: 'slide', 5: 'attack_front', 6: 'attack_up', 7: 'attack_down'}
         action = action_map.get(action_id, 'idle')
         flip = bool(flip_byte)
         self.players[pid] = (x, y, action, flip)
