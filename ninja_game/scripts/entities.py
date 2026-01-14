@@ -460,7 +460,7 @@ class RemotePlayerRenderer:
             self.target_pos = list(pos) # Position cible pour le smoothing
             self.size = size
             self.flip = flip
-            self.smoothing_speed = 12 # Vitesse de lissage
+            self.smoothing_speed = 20 # Vitesse de lissage
             self.air_time = 0 # Pour le weapon check
             self.weapon_id = weapon_id
             self.weapon_map = {1: 'slashTriangle', 2: 'mace1', 3: 'mace'}

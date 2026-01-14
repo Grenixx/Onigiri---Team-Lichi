@@ -59,12 +59,13 @@ class PlayerManager:
 # --- Game Server ---
 # ==============================
 class GameServer:
-    def __init__(self,  local : bool = False, ip="0.0.0.0", port=5006, rate=1/30):
+    def __init__(self,  local : bool = False, ip="0.0.0.0", port=5006, rate=1/60):
         self.ip = ip
         self.port = port
         self.rate = rate
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((ip, port))
+        self.sock.settimeout(0.002)
 
         self.next_map = 0
 
@@ -107,6 +108,8 @@ class GameServer:
                 except ConnectionResetError:
                     # Ignore les erreurs quand un client quitte brutalement
                     continue
+                except socket.timeout:
+                    pass
                 except OSError as e:
                     print("Erreur socket:", e)
                     continue
