@@ -131,7 +131,7 @@ class Game:
         self.net.connect()
         self.remote_players = {}
         
-        self.shader_bg = ShaderBackground(SCALE[0], SCALE[1], "data/shaders/3.4.frag")
+        self.shader_bg = ShaderBackground(SCALE[0], SCALE[1], "data/shaders/3.7.frag")
 
         self.controller = Controller()
 
