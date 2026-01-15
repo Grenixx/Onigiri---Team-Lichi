@@ -25,6 +25,9 @@ class PhysicsEntity:
 
         self.gravity = 600  # pixels/seconde²
         self.max_fall_speed = 300  # pixels/seconde
+
+        # Initialisation du masque pour éviter l'AttributeError au premier render
+        self.mask = self.animation.mask(flip=self.flip)
     
     def rect(self):
         return pygame.Rect(self.pos[0], self.pos[1], self.size[0], self.size[1])

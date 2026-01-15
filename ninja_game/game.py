@@ -203,9 +203,7 @@ class Game:
                 self.level = new_map_id
                 self.load_level(self.level)
             
-            # --- PLAYER UPDATE ---
-            if not self.dead:
-                self.player.update(self.tilemap, (self.movement[1] - self.movement[0], 0),dt=dt)
+            # --- PLAYER UPDATE A ÉTÉ DEPLACÉ PLUS BAS POUR LA CONSOLIDATION DES INPUTS ---
 
             action_mapping = {
                 "idle": 0, "run": 1, "jump": 2, "wall_slide": 3, "slide": 4,
@@ -404,9 +402,58 @@ class Game:
 
                         self.player.attack(direction)
 
-            self.controller.update() # Pour la manette
-            if self.controller.joystick:  # Si une manette est connectée
-                # --- SAUT (Press simple / Latch) ---
+            # --- MISE À JOUR INPUTS MANETTE ---
+            self.controller.update()
+
+            # --- CONSOLIDATION DES MOUVEMENTS ET DIRECTIONS (Clavier + Manette) ---
+            keys = pygame.key.get_pressed()
+            
+            # 1. Mouvements Horizontaux
+            # Clavier (via events movement[0]/[1])
+            kb_left = self.movement[0]
+            kb_right = self.movement[1]
+            
+            # Manette
+            ctrl_left = False
+            ctrl_right = False
+            if self.controller.joystick:
+                if self.controller.left_stick_x < -0.4 or self.controller.dpad_left:
+                    ctrl_left = True
+                elif self.controller.left_stick_x > 0.4 or self.controller.dpad_right:
+                    ctrl_right = True
+            
+            # Fusion : On bouge si l'un OU l'autre est pressé
+            final_move_left = kb_left or ctrl_left
+            final_move_right = kb_right or ctrl_right
+            # On met temporairement les mouvements fusionnés dans movement pour que PhysicsEntity les utilise
+            current_frame_movement = (final_move_right - final_move_left, 0)
+
+            # 2. Directions (is_pressed)
+            direction = None
+            # Clavier
+            if keys[pygame.K_UP] or keys[pygame.K_z]: direction = 'up'
+            elif keys[pygame.K_DOWN] or keys[pygame.K_s]: direction = 'down'
+            elif keys[pygame.K_LEFT] or keys[pygame.K_q]: direction = 'left'
+            elif keys[pygame.K_RIGHT] or keys[pygame.K_d]: direction = 'right'
+            
+            # Manette (écrase seulement si stick actif)
+            if self.controller.joystick:
+                ls_x = self.controller.left_stick_x
+                ls_y = self.controller.left_stick_y
+                if ls_y < -0.5 or self.controller.dpad_up: direction = 'up'
+                elif ls_y > 0.5 or self.controller.dpad_down: direction = 'down'
+                elif ls_x < -0.5 or self.controller.dpad_left: direction = 'left'
+                elif ls_x > 0.5 or self.controller.dpad_right: direction = 'right'
+            
+            self.player.is_pressed = direction
+
+            # --- PLAYER UPDATE (Après consolidation) ---
+            if not self.dead:
+                self.player.update(self.tilemap, (final_move_right - final_move_left, 0), dt=dt)
+
+            # --- ACTIONS MANETTE (Actions uniques / Latch) ---
+            if self.controller.joystick:
+                # Saut
                 if self.controller.button_a and not getattr(self, '_ctrl_jump_pressed', False):
                     self._ctrl_jump_pressed = True
                     if self.player.request_jump():
@@ -414,7 +461,7 @@ class Game:
                 elif not self.controller.button_a:
                     self._ctrl_jump_pressed = False
                 
-                # --- DASH (Press simple / Latch) ---
+                # Dash
                 dash_input = self.controller.button_b or self.controller.left_trigger > 0.3 or self.controller.right_trigger > 0.3
                 if dash_input and not getattr(self, '_ctrl_dash_pressed', False):
                     self._ctrl_dash_pressed = True
@@ -422,55 +469,14 @@ class Game:
                 elif not dash_input:
                     self._ctrl_dash_pressed = False
 
-                # --- MOUVEMENT & DIRECTIONS ---
-                move_x = 0
-                
-                # Consolidation des directions (Clavier + Manette)
-                keys = pygame.key.get_pressed()
-                kb_dir = None
-                if keys[pygame.K_UP] or keys[pygame.K_z]: kb_dir = 'up'
-                elif keys[pygame.K_DOWN] or keys[pygame.K_s]: kb_dir = 'down'
-                elif keys[pygame.K_LEFT] or keys[pygame.K_q]: kb_dir = 'left'
-                elif keys[pygame.K_RIGHT] or keys[pygame.K_d]: kb_dir = 'right'
-
-                ctrl_dir = None
-                ls_x = self.controller.left_stick_x
-                ls_y = self.controller.left_stick_y
-
-                if ls_x < -0.4 or self.controller.dpad_left:
-                    move_x = -1
-                    ctrl_dir = 'left'
-                elif ls_x > 0.4 or self.controller.dpad_right:
-                    move_x = 1
-                    ctrl_dir = 'right'
-                
-                if ls_y < -0.5 or self.controller.dpad_up:
-                    ctrl_dir = 'up'
-                elif ls_y > 0.5 or self.controller.dpad_down:
-                    ctrl_dir = 'down'
-
-                # Priorité au clavier si pressé, sinon manette
-                self.player.is_pressed = kb_dir if kb_dir else ctrl_dir
-
-                self.movement = [move_x < 0, move_x > 0]
-
-                # --- ATTAQUE (Press simple) ---
+                # Attaque
                 if self.controller.button_x and not getattr(self, '_ctrl_attack_pressed', False):
                     self._ctrl_attack_pressed = True
-                    attack_dir = None
-                    if self.controller.left_stick_y < -0.5 or self.controller.dpad_up:
-                        attack_dir = 'up'
-                    elif self.controller.left_stick_y > 0.5 or self.controller.dpad_down:
-                        attack_dir = 'down'
-                    elif self.controller.left_stick_x < -0.5 or self.controller.dpad_left:
-                        attack_dir = 'left'
-                    elif self.controller.left_stick_x > 0.5 or self.controller.dpad_right:
-                        attack_dir = 'right'
-                    self.player.attack(attack_dir)
+                    self.player.attack(direction) # Utilise la direction fusionnée
                 elif not self.controller.button_x:
                     self._ctrl_attack_pressed = False
 
-                # --- CHANGEMENT D'ARME (Press simple) ---
+                # Arme
                 if (self.controller.button_y or self.controller.button_rb) and not getattr(self, '_ctrl_weapon_pressed', False):
                     self._ctrl_weapon_pressed = True
                     self.currentWeaponIndex = (self.currentWeaponIndex % len(self.weaponDictionary)) + 1
@@ -479,7 +485,7 @@ class Game:
                 elif not (self.controller.button_y or self.controller.button_rb):
                     self._ctrl_weapon_pressed = False
 
-                # --- CHANGEMENT DE NIVEAU / DEBUG (Press simple) ---
+                # Start / Back
                 if self.controller.button_start and not getattr(self, '_ctrl_start_pressed', False):
                     self._ctrl_start_pressed = True
                     self.net.send_map_change_request()
