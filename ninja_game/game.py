@@ -354,19 +354,12 @@ class Game:
                     # Mouvement horizontal
                     if event.key == pygame.K_LEFT or event.key == pygame.K_q:
                         self.movement[0] = True
-                        self.player.is_pressed = 'left'
                     if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                         self.movement[1] = True
-                        self.player.is_pressed = 'right'
-                    if event.key == pygame.K_UP or event.key == pygame.K_z:
-                        self.player.is_pressed = 'up'
                     # On vérifie d'abord la touche, PUIS on tente de sauter.
                     if event.key == pygame.K_SPACE:
                         if self.player.request_jump():
                             self.sfx['jump'].play()
-                    if event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                        # On stocke l'information que la touche bas est pressée
-                        self.player.is_pressed = 'down'
                     if event.key == pygame.K_x or event.key == pygame.K_LSHIFT:
                         self.player.dash()
                     if event.key == pygame.K_c:
@@ -391,9 +384,8 @@ class Game:
                         self.movement[0] = False
                     if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                         self.movement[1] = False
-                    # Si on relâche une touche directionnelle on reinit la variable
                     if event.key in [pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_d, pygame.K_a, pygame.K_SPACE, pygame.K_s]:
-                        self.player.is_pressed = None
+                        pass 
                 # Si un bouton de la souris est pressé
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:  # Clic gauche
@@ -432,23 +424,33 @@ class Game:
 
                 # --- MOUVEMENT & DIRECTIONS ---
                 move_x = 0
-                self.player.is_pressed = None # Reset par défaut
+                
+                # Consolidation des directions (Clavier + Manette)
+                keys = pygame.key.get_pressed()
+                kb_dir = None
+                if keys[pygame.K_UP] or keys[pygame.K_z]: kb_dir = 'up'
+                elif keys[pygame.K_DOWN] or keys[pygame.K_s]: kb_dir = 'down'
+                elif keys[pygame.K_LEFT] or keys[pygame.K_q]: kb_dir = 'left'
+                elif keys[pygame.K_RIGHT] or keys[pygame.K_d]: kb_dir = 'right'
 
-                # Stick Gauche
+                ctrl_dir = None
                 ls_x = self.controller.left_stick_x
                 ls_y = self.controller.left_stick_y
 
                 if ls_x < -0.4 or self.controller.dpad_left:
                     move_x = -1
-                    self.player.is_pressed = 'left'
+                    ctrl_dir = 'left'
                 elif ls_x > 0.4 or self.controller.dpad_right:
                     move_x = 1
-                    self.player.is_pressed = 'right'
+                    ctrl_dir = 'right'
                 
                 if ls_y < -0.5 or self.controller.dpad_up:
-                    self.player.is_pressed = 'up'
+                    ctrl_dir = 'up'
                 elif ls_y > 0.5 or self.controller.dpad_down:
-                    self.player.is_pressed = 'down'
+                    ctrl_dir = 'down'
+
+                # Priorité au clavier si pressé, sinon manette
+                self.player.is_pressed = kb_dir if kb_dir else ctrl_dir
 
                 self.movement = [move_x < 0, move_x > 0]
 
