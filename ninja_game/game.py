@@ -135,7 +135,7 @@ class Game:
         self.remote_players = {}
         
         self.ctx = moderngl.create_standalone_context()
-        self.shader_bg = ShaderBackground(SCALE[0], SCALE[1], "data/shaders/3.9transiIN.frag", ctx=self.ctx)
+        self.shader_bg = ShaderBackground(SCALE[0], SCALE[1], "data/shaders/2.7.frag", ctx=self.ctx)
         self.scream_shader = ShaderEffect(SCALE[0], SCALE[1], "data/shaders/4.0.frag", ctx=self.ctx)
         self.transition_shader = ShaderEffect(SCALE[0], SCALE[1], "data/shaders/3.9transi.frag", ctx=self.ctx)
         self.scream_active = False # Désactivé par défaut, on le déclenche sur commande

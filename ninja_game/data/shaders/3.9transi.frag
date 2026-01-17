@@ -67,7 +67,7 @@ void main() {
 
       // --- COULEURS ---
       vec3 bg = vec3(0.0, 0.0, 0.0);
-      vec3 ring = vec3(0.102, 0.102, 0.102);
+      vec3 ring = vec3(0.0392, 0.0392, 0.0392);
       
       vec3 color;
       if (perlin < 0.0 || (perlin > 0.1 && perlin < 0.2) || (perlin > 0.3 && perlin < 0.4) || (perlin > 0.6 && perlin < 0.8)) {

@@ -3,8 +3,10 @@ os.environ['SDL_VIDEO_CENTERED'] = '1'
 import sys
 import subprocess
 import pygame
+import moderngl
 from game import Game
 from scripts.lobby_discovery import LobbyManager
+from scripts.shader_bg import ShaderBackground
 
 pygame.init()
 
@@ -35,7 +37,17 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("Menu")
 clock = pygame.time.Clock()
 font = pygame.font.Font(FONT_NAME, FONT_SIZE)
-BACKGROUND = pygame.image.load("data\images\menuImage\Background\\backgroundtemp.png").convert()
+# Initialisation Shader
+ctx = moderngl.create_standalone_context()
+# On utilise une résolution interne plus petite pour l'effet pixel art, comme dans le jeu (320x180)
+# Mais pour le menu, on peut vouloir un truc plus net. Essayons la résolution native / 4 pour un effet un peu rétro mais lisible.
+# Ou restons cohérents avec le jeu : 320x180.
+limit_res = (320, 180) 
+limit_surface = pygame.Surface(limit_res)
+shader_bg = ShaderBackground(limit_res[0], limit_res[1], "data/shaders/2.7.frag", ctx=ctx)
+
+# On garde BACKGROUND_DIM pour la fonction resize au cas où, mais on ne l'utilise plus pour l'affichage direct
+BACKGROUND = pygame.image.load("data/images/menuImage/Background/backgroundtemp.png").convert()
 BACKGROUND_DIM = pygame.transform.smoothscale(BACKGROUND, (WIDTH, HEIGHT))
 
 def render_text(text, font, color):
@@ -157,7 +169,8 @@ def resize(new_width, new_height):
     global WIDTH,HEIGHT, screen, BACKGROUND_DIM
     WIDTH,HEIGHT = new_width,new_height
     screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
-    BACKGROUND_DIM = pygame.transform.smoothscale(BACKGROUND, (WIDTH, HEIGHT))
+    # On laisse le shader à sa résolution interne fixe (320x180) qu'on étire, 
+    # c'est plus joli pour le pixel art et plus performant.
     for menu in lst_menu:
         menu.rebuild()
     
@@ -260,7 +273,19 @@ def main():
                 continue
             if active_menu:
                 active_menu.handle_event(event)
-        screen.blit(BACKGROUND_DIM, (0, 0))
+
+        # Rendu du Shader
+        # On peut simuler une caméra qui bouge lentement pour l'effet
+        cam_x = pygame.time.get_ticks() * 0.05
+        cam_y = pygame.time.get_ticks() * 0.05
+        shader_surf = shader_bg.render(camera=(cam_x, cam_y))
+        
+        # On redimensionne le shader pour remplir l'écran (crée une nouvelle surface)
+        scaled_bg = pygame.transform.scale(shader_surf, (WIDTH, HEIGHT))
+        # Puis on l'affiche
+        screen.blit(scaled_bg, (0, 0))
+        
+        #screen.blit(BACKGROUND_DIM, (0, 0)) # Ancienne image désactivée
         if active_menu:
             active_menu.draw(screen)
         pygame.display.flip()
