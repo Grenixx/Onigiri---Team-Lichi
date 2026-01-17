@@ -43,9 +43,8 @@ void main() {
       
       // --- CALCULS DU PERLIN NOISE (Ton code original) ---
       // On ajoute un facteur de parallaxe (ex: 0.5 * u_camera)
-      // Si tu veux que le fond bouge MOINS vite que le joueur (effet loin) : 0.2 ou 0.5
-      // Si tu veux que le fond bouge PLUS vite : 1.5 ou 2.0
-      vec2 parallaxOffset = u_camera * 0.5; 
+      // On arrondit le déplacement avec floor() pour éviter le scintillement sub-pixel
+      vec2 parallaxOffset = floor(u_camera * 0.5); 
       vec2 uv = (gl_FragCoord.xy + parallaxOffset) / u_resolution.y;
       
       uv *= 15.0; // Échelle du bruit
@@ -69,12 +68,18 @@ void main() {
       vec3 bg = vec3(0.0, 0.0, 0.0);
       vec3 ring = vec3(0.6863, 0.0, 0.0);
       
-      vec3 color;
-      if (perlin < 0.0 || (perlin > 0.1 && perlin < 0.2) || (perlin > 0.3 && perlin < 0.4) || (perlin > 0.6 && perlin < 0.8)) {
-        color = bg;
-      } else {
-        color = ring;
-      }
+      // --- LISSAGE DU RENDU (ANTI-JITTER) ---
+      // Au lieu de couper net avec des IF, on utilise une onde sinusoïdale basée sur le perlin
+      // Cela crée des bandes douces et stables qui ne clignotent pas
+      
+      // On transforme le bruit [-1, 1] en un motif périodique [0, 1]
+      float pattern = 0.5 + 0.5 * sin(perlin * 20.0); 
+      
+      // On seuille doucement pour garder l'esprit "bandes" mais sans aliasing
+      // smoothstep(0.4, 0.6, pattern) permet d'avoir une transition floue sur quelques pixels
+      float mask = smoothstep(0.45, 0.55, pattern);
+      
+      vec3 color = mix(bg, ring, mask);
       
       gl_FragColor = vec4(color, 1.0);
   }
