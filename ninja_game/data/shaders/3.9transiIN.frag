@@ -41,13 +41,20 @@ void main() {
   else {
       // SINON, on affiche ton effet Perlin stylé (Background)
       
-      // --- CALCULS DU PERLIN NOISE (Ton code original) ---
-      // On ajoute un facteur de parallaxe (ex: 0.5 * u_camera)
-      // On arrondit le déplacement avec floor() pour éviter le scintillement sub-pixel
-      vec2 parallaxOffset = floor(u_camera * 0.5); 
-      vec2 uv = (gl_FragCoord.xy + parallaxOffset) / u_resolution.y;
+      // --- CALCULS DU PERLIN NOISE CORRECTS ---
+      // 1. On normalise d'abord les coords écran (0.0 -> 1.0)
+      vec2 screenSpace = gl_FragCoord.xy / u_resolution.y;
       
-      uv *= 15.0; // Échelle du bruit
+      // 2. On applique le facteur de zoom du motif (15x)
+      vec2 scaledUv = screenSpace * 15.0;
+      
+      // 3. On ajoute le déplacement de la caméra APRÈS le zoom
+      // Comme ça, quand la cam bouge de 1, le motif bouge de 'scale' unités
+      // On multiplie par 0.05 pour compenser le zoom 15x et avoir un mouvement lent
+      vec2 parallax = u_camera * 0.05; 
+      
+      vec2 uv = scaledUv + parallax;
+      
       vec2 gridId = floor(uv);
       vec2 gridUv = fract(uv);
 

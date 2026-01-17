@@ -524,7 +524,9 @@ class Game:
                 # Mise à jour des uniformes
                 self.transition_shader.prog["u_progress"] = progress
                 if "u_camera" in self.transition_shader.prog:
-                    self.transition_shader.prog["u_camera"] = (render_scroll[0] * 0.2, render_scroll[1] * -0.2)
+                    # On envoie la position PIXEL EXACTE (juste inversée en Y pour OpenGL)
+                    # Le shader se chargera d'appliquer le facteur 0.5 pour le parallax
+                    self.transition_shader.prog["u_camera"] = (render_scroll[0], -render_scroll[1])
                 
                 # Application du shader de transition sur display_2
                 trans_surf = self.transition_shader.render(self.display_2)
