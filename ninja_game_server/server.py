@@ -73,7 +73,7 @@ class PlayerManager:
 # --- Game Server ---
 # ==============================
 class GameServer:
-    def __init__(self,  local : bool = False, ip="0.0.0.0", port=5006, rate=1/60):
+    def __init__(self,  local : bool = False, ip="0.0.0.0", port=5006, server_name="Ninja Server", rate=1/60):
         self.ip = ip
         self.port = port
         self.rate = rate
@@ -100,7 +100,7 @@ class GameServer:
         
         # Démarrage du Lobby Discovery (même en local pour tester)
         if LobbyManager:
-            self.lobby = LobbyManager(mode='server', server_port=self.port, server_name="Ninja Server")
+            self.lobby = LobbyManager(mode='server', server_port=self.port, server_name=server_name)
             self.lobby.start_heartbeat()
 
     def init_upnp(self):
@@ -272,5 +272,10 @@ class GameServer:
 # --- Lancement ---
 # ==============================
 if __name__ == "__main__":
-    server = GameServer(True) #mode local == true
+    import argparse
+    parser = argparse.ArgumentParser(description='Ninja Game Server')
+    parser.add_argument('--name', type=str, default="Ninja Server", help='Name of the server')
+    args = parser.parse_args()
+
+    server = GameServer(True, server_name=args.name) #mode local == true
     server.run()

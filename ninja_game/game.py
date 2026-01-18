@@ -325,10 +325,11 @@ class Game:
 
             for event in pygame.event.get():
                 # Si l'utilisateur ferme la fenêtre
+                # Si l'utilisateur ferme la fenêtre
                 if event.type == pygame.QUIT:
                     self.net.disconnect()
-                    pygame.quit()
-                    sys.exit()
+                    # On quitte la boucle de jeu pour revenir au menu
+                    return
                 # Si une touche est pressée
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:

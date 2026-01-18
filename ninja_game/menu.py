@@ -87,6 +87,42 @@ class Button:
 
 
 
+
+class InputButton(Button):
+    def __init__(self, rect, text, font, color=BUTTON_COLOR, hover_color=BUTTON_HOVER, text_color=TEXT_COLOR):
+        super().__init__(rect, text, None, font, color, hover_color, text_color)
+        self.active = False
+        self.input_text = text
+
+    def draw(self, surface):
+        color = self.hover_color if self.active or self.hovered else self.color
+        pygame.draw.rect(surface, color, self.rect, border_radius=8)
+        
+        # Render text (append cursor if active)
+        display_text = self.input_text + ("|" if self.active and (pygame.time.get_ticks() // 500) % 2 == 0 else "")
+        label = render_text(display_text, self.font, self.text_color)
+        label_rect = label.get_rect(center=self.rect.center)
+        surface.blit(label, label_rect)
+
+    def handle_event(self, event):
+        super().handle_event(event)
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.rect.collidepoint(event.pos):
+                self.active = True
+            else:
+                self.active = False
+        
+        if self.active and event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN:
+                self.active = False
+            elif event.key == pygame.K_BACKSPACE:
+                self.input_text = self.input_text[:-1]
+            else:
+                # Add character if printable
+                if len(self.input_text) < 20 and event.unicode.isprintable():
+                    self.input_text += event.unicode
+            # Update label isn't strictly necessary here as draw handles it dynamically
+
 class Menu:
     def __init__(self, title, items, font, spacing=16):
         self.title = title
@@ -108,10 +144,23 @@ class Menu:
         total_h = len(items) * button_h + (len(items) - 1) * self.spacing
         start_y = (HEIGHT - total_h) // 2
         x = (WIDTH - button_w) // 2
-        for i, (text, callback) in enumerate(items):
+        
+        for i, item in enumerate(items):
             y = start_y + i * (button_h + self.spacing)
-            btn = Button((x, y, button_w, button_h), text, callback, self.font)
-            self.items.append(btn)
+            rect = (x, y, button_w, button_h)
+            
+            if isinstance(item, Button):
+                 # Item is already a widget, just update its position
+                 item.rect = pygame.Rect(rect)
+                 # Re-render label if it's a standard button to center it
+                 if hasattr(item, '_render_label'):
+                     item._render_label()
+                 self.items.append(item)
+            elif isinstance(item, tuple):
+                # Standard text, callback tuple
+                text, callback = item
+                btn = Button(rect, text, callback, self.font)
+                self.items.append(btn)
 
     def draw(self, surface):
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -122,38 +171,38 @@ class Menu:
         title_rect = title_surf.get_rect(center=(WIDTH // 2, HEIGHT * 0.2))
         surface.blit(title_surf, title_rect)
         for i, btn in enumerate(self.items):
-            btn.hovered = (i == self.selected)
+            if isinstance(btn, Button) and not isinstance(btn, InputButton):
+                 btn.hovered = (i == self.selected)
+            elif isinstance(btn, InputButton):
+                 btn.hovered = (i == self.selected)
+            
             btn.draw(surface)
 
     def handle_event(self, event):
+        # Prioritize input handling
         for btn in self.items:
             btn.handle_event(event)
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_DOWN:
-                self.selected = (self.selected + 1) % len(self.items)
-            elif event.key == pygame.K_UP:
-                self.selected = (self.selected - 1) % len(self.items)
-            elif event.key == pygame.K_RETURN or event.key == pygame.K_KP_ENTER:
-                selected_btn = self.items[self.selected]
-                if callable(selected_btn.callback):
-                    selected_btn.callback()
-
-
+            
+        # Navigation logic
+        if not any(isinstance(b, InputButton) and b.active for b in self.items):
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_DOWN:
+                    self.selected = (self.selected + 1) % len(self.items)
+                elif event.key == pygame.K_UP:
+                    self.selected = (self.selected - 1) % len(self.items)
+                elif event.key == pygame.K_RETURN or event.key == pygame.K_KP_ENTER:
+                    selected_btn = self.items[self.selected]
+                    if hasattr(selected_btn, 'callback') and callable(selected_btn.callback):
+                        selected_btn.callback()
 
 
 def start_game(ip="127.0.0.1"):
-    in_game = True
     game = Game(FPS, [WIDTH,HEIGHT], ip=ip)
     game.run()
-    while in_game:
-        for ev in pygame.event.get():
-            if ev.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
-                in_game = False
     
-
+    # Au retour, on s'assure que l'écran du menu est bien défini
+    global screen
+    screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 
 def open_options():
     global active_menu
@@ -211,34 +260,52 @@ def open_server_browser():
     refresh_servers()
     set_active_menu(server_menu)
 
-def host_game():
-    """Lance le serveur en arrière-plan et rejoint la partie."""
-    print("Démarrage du serveur...")
+# Input field for server name
+server_name_input = InputButton((0,0,0,0), "Ninja Server", font)
+
+def launch_hosted_game():
+    """Lance le serveur avec le nom choisi et rejoint."""
+    server_name = server_name_input.input_text
+    print(f"Démarrage du serveur '{server_name}'...")
     
-    # Chemin vers server.py (relatif à menu.py qui est dans ninja_game/)
     server_script = os.path.abspath(os.path.join(os.path.dirname(__file__), '../ninja_game_server/server.py'))
     
+    server_process = None
     try:
-        # Lance le serveur dans une nouvelle console (surtout utile sous Windows pour voir les logs)
+        cmd = [sys.executable, server_script, "--name", server_name]
         if sys.platform == "win32":
-            subprocess.Popen([sys.executable, server_script], creationflags=subprocess.CREATE_NEW_CONSOLE)
+            server_process = subprocess.Popen(cmd, creationflags=subprocess.CREATE_NEW_CONSOLE)
         else:
-            subprocess.Popen([sys.executable, server_script])
+            server_process = subprocess.Popen(cmd)
 
         start_game("127.0.0.1")
         
     except Exception as e:
         print(f"Erreur au lancement du serveur : {e}")
+    finally:
+        # On arrête le serveur quand on revient au menu
+        if server_process:
+            print("Arrêt du serveur local...")
+            server_process.terminate()
+
+def open_host_menu():
+    set_active_menu(host_menu)
 
 # Menu vide pour l'instant, sera rempli par refresh_servers
 server_menu = Menu("Server Browser", [("Loading...", None), ("Back", lambda: set_active_menu(main_menu))], font)
 
-main_menu = Menu("Main Menu", [("HOST GAME", host_game), ("FIND GAME", open_server_browser),("OPTIONS", open_options),("QUIT GAME", quit_game),], font)
+host_menu = Menu("Host Game", [
+    server_name_input,
+    ("Start Server", launch_hosted_game),
+    ("Back", lambda: set_active_menu(main_menu))
+], font)
+
+main_menu = Menu("Main Menu", [("HOST GAME", open_host_menu), ("FIND GAME", open_server_browser),("OPTIONS", open_options),("QUIT GAME", quit_game),], font)
 options_menu = Menu("Options", [("Audio",None),("Keyboards",lambda: set_active_menu(keyboard_menu)),("Graphics",lambda: set_active_menu(graphics_menu)),("FPS",lambda: set_active_menu(fps_menu)),("Back", lambda: set_active_menu(main_menu)),], font)
 keyboard_menu = Menu("Keyboard", [(f"Jump : {CONTROLS['JUMP']}",lambda: rebinding("JUMP")),(f"Change Arm : {CONTROLS['CHANGE ARM']}",lambda: rebinding("ATTACK")),(f"Dash : {CONTROLS['DASH']}",lambda: rebinding("DODGE")),(f"left : {CONTROLS['LEFT']}",lambda: rebinding("LEFT")),(f"Right : {CONTROLS['RIGHT']}",lambda: rebinding("RIGHT")),("Back", lambda: set_active_menu(options_menu))],font)
 graphics_menu = Menu("Graphics",[("3840-2160",lambda: resize(3840, 2160)),("2560-1440",lambda: resize(2560, 1440)),("1920-1080",lambda: resize(1920, 1080)),("1680-1050",lambda: resize(1680, 1050)),("1280-720",lambda: resize(1280,720)),("1024-768",lambda: resize(1024,768)),("800-600",lambda: resize(800,600)),("Back", lambda: set_active_menu(options_menu))],font)
 fps_menu = Menu("FPS",[("30 FPS",lambda: refps(30)),("45 FPS",lambda: refps(45)),("60 FPS",lambda: refps(60)),("120 FPS",lambda: refps(120)),("144 FPS",lambda: refps(144)),("165 FPS",lambda: refps(165)),("180 FPS",lambda: refps(180)),("240 FPS",lambda: refps(240)),("UNCAPPED FPS",lambda: refps(100000000)),("Back", lambda: set_active_menu(options_menu))],font)
-lst_menu = [main_menu,options_menu,keyboard_menu,graphics_menu,server_menu]
+lst_menu = [main_menu,host_menu,options_menu,keyboard_menu,graphics_menu,server_menu]
 
 
 def set_active_menu(menu):
