@@ -277,5 +277,5 @@ if __name__ == "__main__":
     parser.add_argument('--name', type=str, default="Ninja Server", help='Name of the server')
     args = parser.parse_args()
 
-    server = GameServer(True, server_name=args.name) #mode local == true
+    server = GameServer(True, server_name=args.name)  # mode local == True
     server.run()

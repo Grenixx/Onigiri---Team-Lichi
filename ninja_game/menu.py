@@ -263,30 +263,28 @@ def open_server_browser():
 # Input field for server name
 server_name_input = InputButton((0,0,0,0), "Ninja Server", font)
 
-def launch_hosted_game():
-    """Lance le serveur avec le nom choisi et rejoint."""
-    server_name = server_name_input.input_text
-    print(f"Démarrage du serveur '{server_name}'...")
+def host_game():
+    """Lance le serveur via le fichier .bat et rejoint la partie."""
+    import time
     
-    server_script = os.path.abspath(os.path.join(os.path.dirname(__file__), '../ninja_game_server/server.py'))
+    print("Démarrage du serveur via start_server.bat...")
     
-    server_process = None
+    # Chemin vers le .bat dans ninja_game_server
+    bat_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../ninja_game_server/start_server.bat'))
+    
     try:
-        cmd = [sys.executable, server_script, "--name", server_name]
-        if sys.platform == "win32":
-            server_process = subprocess.Popen(cmd, creationflags=subprocess.CREATE_NEW_CONSOLE)
-        else:
-            server_process = subprocess.Popen(cmd)
-
+        # Lance le .bat (qui ouvre une nouvelle console automatiquement)
+        subprocess.Popen([bat_path], shell=True)
+        
+        # Attente simple de 2 secondes (le .bat est rapide et fiable)
+        print("Attente du démarrage du serveur (2 secondes)...")
+        time.sleep(2)
+        
+        # On rejoint automatiquement en local
         start_game("127.0.0.1")
         
     except Exception as e:
         print(f"Erreur au lancement du serveur : {e}")
-    finally:
-        # On arrête le serveur quand on revient au menu
-        if server_process:
-            print("Arrêt du serveur local...")
-            server_process.terminate()
 
 def open_host_menu():
     set_active_menu(host_menu)
@@ -296,7 +294,7 @@ server_menu = Menu("Server Browser", [("Loading...", None), ("Back", lambda: set
 
 host_menu = Menu("Host Game", [
     server_name_input,
-    ("Start Server", launch_hosted_game),
+    ("Start Server", host_game),
     ("Back", lambda: set_active_menu(main_menu))
 ], font)
 

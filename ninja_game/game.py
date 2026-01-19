@@ -266,6 +266,8 @@ class Game:
                 rot_function=lambda x, y: int(math.sin(x / 100 + pygame.time.get_ticks() / 300) * 30) / 10)
 
             # --- ENEMIES ---
+            if self.debug and len(self.net.enemies) > 0:
+                print(f"[DEBUG CLIENT] Ennemis reçus du réseau : {len(self.net.enemies)}")
             self.enemies_renderer.update(dt)
             self.enemies_renderer.render(self.display, offset=render_scroll, dt=dt)
 
