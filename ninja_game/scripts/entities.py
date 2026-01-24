@@ -370,6 +370,8 @@ class PurpleCircle:
     def __init__(self, game):
         self.game = game
         self.radius = 8  # rayon du cercle pour les collisions
+        self.size = (18, 18) # (Largeur, Hauteur)
+        self.collision_offset = (5, 0) # (X, Y)
 
         base_anim = self.game.assets.get(f'patrol/idle', self.game.assets['player/idle'])
         self.animation = base_anim.copy()
@@ -407,47 +409,32 @@ class PurpleCircle:
             enemy_img = anim.img()
             
             # Hitbox basée sur la position serveur (Top-Left)
-            enemy_rect = pygame.Rect(ex, ey, 8, 15)
+            enemy_rect = pygame.Rect(ex + self.collision_offset[0], ey + self.collision_offset[1], self.size[0], self.size[1])
             
-            # 1. Sync Mask
-            if enemy_img not in self.enemy_masks:
-                self.enemy_masks[enemy_img] = pygame.mask.from_surface(enemy_img)
-            enemy_mask = self.enemy_masks[enemy_img]
 
             # 2. Collision Joueur (Dégâts reçus)
             player_rect = player.rect()
             if player_rect.colliderect(enemy_rect):
                 offset_x = enemy_rect.x - player_rect.x
                 offset_y = enemy_rect.y - player_rect.y
-                if player.mask.overlap(enemy_mask, (offset_x, offset_y)):
-                    if not self.game.dead and self.game.invincible_frame_time <= 0:
-                        self.game.screenshake = max(16, self.game.screenshake)
-                        self.game.sfx['hit'].play()
-                        self.game.dead += dt * 60
+                if not self.game.dead and self.game.invincible_frame_time <= 0:
+                    self.game.screenshake = max(16, self.game.screenshake)
+                    self.game.sfx['hit'].play()
+                    self.game.dead += dt * 60
 
             # 3. Collision Arme (Dégâts infligés)
             if weapon_hitbox.colliderect(enemy_rect):
                 offset_x = enemy_rect.x - weapon_hitbox.x
                 offset_y = enemy_rect.y - weapon_hitbox.y
-                overlap_point = current_weapon.weapon_mask.overlap(enemy_mask, (offset_x, offset_y))
                 
-                if overlap_point:
-                    # Debug logic (Coloration de l'arme et scar)
-                    if current_weapon.debug and is_attacking:
-                        overlap_mask = current_weapon.weapon_mask.overlap_mask(enemy_mask, (offset_x, offset_y))
-                        if overlap_mask:
-                            hit_surf = overlap_mask.to_surface(setcolor=(255, 0, 0, 255), unsetcolor=(0,0,0,0)).convert_alpha()
-                            self.game.hit_visuals.append((weapon_hitbox.topleft, hit_surf))
-                            current_weapon.is_hitting = True
-
-                    # Kill logic
-                    if is_attacking:
-                        hit_pos = (weapon_hitbox.x + overlap_point[0], weapon_hitbox.y + overlap_point[1])
-                        for i in range(30):
-                            angle = random.random() * math.pi * 2
-                            self.game.sparks.append(Spark(hit_pos, angle, 2 + random.random()))
-                        
-                        to_remove.append(eid)
+                # Kill logic
+                if is_attacking:
+                    hit_pos = (weapon_hitbox.x, weapon_hitbox.y)
+                    for i in range(30):
+                        angle = random.random() * math.pi * 2
+                        self.game.sparks.append(Spark(hit_pos, angle, 2 + random.random()))
+                    
+                    to_remove.append(eid)
 
         # Retrait des ennemis
         for eid in to_remove:
@@ -488,14 +475,8 @@ class PurpleCircle:
 
             # Advanced Debug visualization
             if self.game.player.weapon.weapon_equiped.debug:
-                # 1. Draw Enemy AABB (Yellow)
-                enemy_rect = imgAnim.get_rect(topleft=(ex_topleft, ey_topleft))
-                pygame.draw.rect(surf, (255, 255, 0), enemy_rect, 1)
-
-                # 2. Draw Enemy Full Mask (Semi-transparent Blue)
-                enemy_mask = anim.mask(flip=flip)
-                mask_surf = enemy_mask.to_surface(setcolor=(0, 100, 255, 130), unsetcolor=(0, 0, 0, 0)).convert_alpha()
-                surf.blit(mask_surf, (ex_topleft, ey_topleft))
+                debug_rect = pygame.Rect(x + self.collision_offset[0] - offset[0], y + self.collision_offset[1] - offset[1], self.size[0], self.size[1])
+                pygame.draw.rect(surf, (255, 255, 0), debug_rect, 1)
 
             self.game.tilemap.grass_manager.apply_force((x, y), 6, 12)
 
